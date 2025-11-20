@@ -27,7 +27,7 @@ export default function Header() {
             PEMERIKSAAN KESEHATAN DAN PENGOBATAN GRATIS, SERTA PEMBERIAN PAKET PANGAN BERGIZI UNTUK BALITA
           </h1>
           <p className={styles.tagline}>
-            "Merdeka Bebas Stunting, Dukung Generasi Sehat dan Berakhlak Islami"
+            &quot;Merdeka Bebas Stunting, Dukung Generasi Sehat dan Berakhlak Islami&quot;
           </p>
         </div>
       </div>
