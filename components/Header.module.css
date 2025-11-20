@@ -1,0 +1,241 @@
+.header {
+  background: white;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+  border-radius: 12px;
+  position: relative;
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex: 1;
+  min-width: 0;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.btnRekap {
+  padding: 10px 20px;
+  border: 1px solid #1f2937 !important;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white !important;
+  color: #1f2937 !important;
+  white-space: nowrap;
+  font-family: inherit;
+  outline: none;
+}
+
+.btnRekap:hover {
+  background: #f9fafb !important;
+  border-color: #374151 !important;
+}
+
+.btnRekap:active {
+  transform: scale(0.98);
+}
+
+.btnLogout {
+  padding: 10px 20px;
+  border: 1px solid #ef4444 !important;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white !important;
+  color: #ef4444 !important;
+  white-space: nowrap;
+  font-family: inherit;
+  outline: none;
+}
+
+.btnLogout:hover {
+  background: #fee2e2 !important;
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
+}
+
+.btnLogout:active {
+  transform: scale(0.98);
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.logoIcon {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logoIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.logoText {
+  display: flex;
+  flex-direction: column;
+}
+
+.logoYBM {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a202c;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.logoPLN {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0ea5e9;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.logoSubtitle {
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.textContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mainTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f766e;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.tagline {
+  font-size: 13px;
+  font-style: italic;
+  color: #0f766e;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .mainTitle {
+    font-size: 14px;
+  }
+  
+  .tagline {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .headerContent {
+    flex-direction: column;
+    width: 100%;
+    text-align: center;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btnRekap,
+  .btnLogout {
+    width: 100%;
+    max-width: 200px;
+  }
+
+  .logoContainer {
+    justify-content: center;
+  }
+
+  .logoIcon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .logoYBM {
+    font-size: 20px;
+  }
+
+  .logoPLN {
+    font-size: 18px;
+  }
+
+  .logoSubtitle {
+    font-size: 9px;
+  }
+
+  .mainTitle {
+    font-size: 13px;
+  }
+
+  .tagline {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 12px;
+  }
+
+  .logoIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .logoYBM {
+    font-size: 18px;
+  }
+
+  .logoPLN {
+    font-size: 16px;
+  }
+
+  .mainTitle {
+    font-size: 12px;
+  }
+
+  .tagline {
+    font-size: 10px;
+  }
+}
