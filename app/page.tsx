@@ -503,6 +503,9 @@ export default function Home() {
           </button>
         </div>
       </form>
+      <div className={styles.footer}>
+        <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>
+      </div>
     </div>
   );
 }

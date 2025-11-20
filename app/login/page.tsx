@@ -40,62 +40,67 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.card}>
-        <div className={styles.logoSection}>
-          <Image src="/images/logo-ybm.png" alt="Logo YBM PLN" width={120} height={120} className={styles.logo} />
-          
+    <>
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <div className={styles.logoSection}>
+            <Image src="/images/logo-ybm.png" alt="Logo YBM PLN" width={150} height={100} className={styles.logo} />
+            
+          </div>
+          <div className={styles.header}>
+            <h1 className={styles.title}>APLIKASI PEMERIKSAAN KESEHATAN DAN PENGOBATAN GRATIS</h1>
+            <p className={styles.subtitle}>Aplikasi ini digunakan untuk mempermudah pemeriksaan kesehatan dan pengobatan gratis</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.formGroup}>
+              <label htmlFor="dokter_pemeriksa">
+                Nama Dokter <span className={styles.required}>*</span>
+              </label>
+              <input
+                type="text"
+                id="dokter_pemeriksa"
+                name="dokter_pemeriksa"
+                value={formData.dokter_pemeriksa}
+                onChange={handleChange}
+                required
+                className={styles.input}
+                placeholder="Masukkan nama dokter"
+                autoFocus
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="tanggal_pemeriksaan">
+                Tanggal Pemeriksaan <span className={styles.required}>*</span>
+              </label>
+              <input
+                type="date"
+                id="tanggal_pemeriksaan"
+                name="tanggal_pemeriksaan"
+                value={formData.tanggal_pemeriksaan}
+                onChange={handleChange}
+                required
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formActions}>
+              <button
+                type="submit"
+                disabled={loading}
+                className={styles.btnPrimary}
+              >
+                {loading ? 'Memproses...' : 'Mulai Input Data Pasien'}
+              </button>
+            </div>
+          </form>
         </div>
-        <div className={styles.header}>
-          <h1 className={styles.title}>APLIKASI PEMERIKSAAN KESEHATAN DAN PENGOBATAN GRATIS</h1>
-          <p className={styles.subtitle}>Aplikasi ini digunakan untuk mempermudah pemeriksaan kesehatan dan pengobatan gratis</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.formGroup}>
-            <label htmlFor="dokter_pemeriksa">
-              Nama Dokter <span className={styles.required}>*</span>
-            </label>
-            <input
-              type="text"
-              id="dokter_pemeriksa"
-              name="dokter_pemeriksa"
-              value={formData.dokter_pemeriksa}
-              onChange={handleChange}
-              required
-              className={styles.input}
-              placeholder="Masukkan nama dokter"
-              autoFocus
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="tanggal_pemeriksaan">
-              Tanggal Pemeriksaan <span className={styles.required}>*</span>
-            </label>
-            <input
-              type="date"
-              id="tanggal_pemeriksaan"
-              name="tanggal_pemeriksaan"
-              value={formData.tanggal_pemeriksaan}
-              onChange={handleChange}
-              required
-              className={styles.input}
-            />
-          </div>
-
-          <div className={styles.formActions}>
-            <button
-              type="submit"
-              disabled={loading}
-              className={styles.btnPrimary}
-            >
-              {loading ? 'Memproses...' : 'Mulai Input Data Pasien'}
-            </button>
-          </div>
-        </form>
       </div>
-    </div>
+      <div className={styles.footer}>
+        <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>
+      </div>
+    </>
   );
 }
 

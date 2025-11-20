@@ -327,3 +327,16 @@
   }
 }
 
+.footer {
+  text-align: center;
+  padding: 24px 20px;
+  margin-top: 32px;
+  color: white;
+  font-size: 14px;
+}
+
+.footer p {
+  margin: 0;
+  opacity: 0.9;
+}
+

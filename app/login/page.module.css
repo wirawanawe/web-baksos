@@ -2,7 +2,7 @@
   max-width: 600px;
   margin: 0 auto;
   padding: 20px;
-  min-height: 100vh;
+  min-height: calc(100vh - 100px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,8 +159,8 @@
   }
 
   .logo {
-    width: 80px;
-    height: 80px;
+    width: 150px;
+    height: 100px;
   }
 
   .logoYBM {
@@ -182,5 +182,19 @@
   .subtitle {
     font-size: 14px;
   }
+}
+
+.footer {
+  text-align: center;
+  padding: 24px 20px;
+  margin-top: 0;
+  color: white;
+  font-size: 14px;
+  width: 100%;
+}
+
+.footer p {
+  margin: 0;
+  opacity: 0.9;
 }
 
