@@ -46,7 +46,7 @@ interface Obat {
 
 interface NewResepItem {
   obat_id: number;
-  jumlah: number;
+  jumlah: number | string;
   aturan_pakai: string;
 }
 
@@ -64,7 +64,7 @@ export default function FarmasiPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newResepItem, setNewResepItem] = useState<NewResepItem>({
     obat_id: 0,
-    jumlah: 1,
+    jumlah: '',
     aturan_pakai: '',
   });
   const [addingResep, setAddingResep] = useState(false);
@@ -248,8 +248,9 @@ export default function FarmasiPage() {
       return;
     }
 
-    if (!newResepItem.jumlah || newResepItem.jumlah <= 0) {
-      setMessage({ type: 'error', text: 'Jumlah obat harus lebih dari 0' });
+    const jumlahNum = typeof newResepItem.jumlah === 'string' ? parseInt(newResepItem.jumlah) : newResepItem.jumlah;
+    if (!jumlahNum || jumlahNum <= 0) {
+      setMessage({ type: 'error', text: 'Jumlah obat harus diisi dan lebih dari 0' });
       return;
     }
 
@@ -260,7 +261,7 @@ export default function FarmasiPage() {
       return;
     }
 
-    if (selectedObat.stok < newResepItem.jumlah) {
+    if (selectedObat.stok < jumlahNum) {
       setMessage({ 
         type: 'error', 
         text: `Stok ${selectedObat.nama_obat} tidak cukup. Stok tersedia: ${selectedObat.stok}` 
@@ -280,7 +281,7 @@ export default function FarmasiPage() {
         body: JSON.stringify({
           pemeriksaan_id: selectedPatient.id, // patient.id is actually pemeriksaan.id
           obat_id: newResepItem.obat_id,
-          jumlah: newResepItem.jumlah,
+          jumlah: jumlahNum,
           aturan_pakai: newResepItem.aturan_pakai || null,
         }),
       });
@@ -290,7 +291,7 @@ export default function FarmasiPage() {
       if (result.success) {
         setMessage({ type: 'success', text: 'Obat berhasil ditambahkan ke resep' });
         setShowAddForm(false);
-        setNewResepItem({ obat_id: 0, jumlah: 1, aturan_pakai: '' });
+        setNewResepItem({ obat_id: 0, jumlah: '', aturan_pakai: '' });
         
         // Refresh resep details
         const resepResponse = await fetch(`/api/resep?pemeriksaan_id=${selectedPatient.id}`);
@@ -442,7 +443,8 @@ export default function FarmasiPage() {
                     <input
                       type="number"
                       value={newResepItem.jumlah}
-                      onChange={(e) => setNewResepItem({ ...newResepItem, jumlah: parseInt(e.target.value) || 1 })}
+                      onChange={(e) => setNewResepItem({ ...newResepItem, jumlah: e.target.value === '' ? '' : parseInt(e.target.value) || '' })}
+                      placeholder="Masukkan jumlah"
                       min="1"
                       max={newResepItem.obat_id > 0 ? obatList.find(o => o.id === newResepItem.obat_id)?.stok || 0 : undefined}
                       className={styles.addResepFormInput}

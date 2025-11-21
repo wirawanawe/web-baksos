@@ -36,7 +36,7 @@ interface Obat {
 
 interface ResepItem {
   obat_id: number;
-  jumlah: number;
+  jumlah: number | string;
   aturan_pakai: string;
 }
 
@@ -232,7 +232,7 @@ export default function DokterPage() {
   };
 
   const handleAddResep = () => {
-    setResepItems([...resepItems, { obat_id: 0, jumlah: 1, aturan_pakai: '' }]);
+    setResepItems([...resepItems, { obat_id: 0, jumlah: '', aturan_pakai: '' }]);
   };
 
   const handleResepChange = (index: number, field: keyof ResepItem, value: any) => {
@@ -252,14 +252,17 @@ export default function DokterPage() {
     }
     
     // Validasi jumlah tidak boleh melebihi stok
-    if (field === 'jumlah' && currentItem.obat_id > 0) {
-      const obat = obatList.find(o => o.id === currentItem.obat_id);
-      if (obat && parseInt(value) > obat.stok) {
-        setMessage({ 
-          type: 'error', 
-          text: `Jumlah ${obat.nama_obat} tidak boleh melebihi stok tersedia (${obat.stok})` 
-        });
-        return;
+    if (field === 'jumlah' && currentItem.obat_id > 0 && value !== '') {
+      const jumlahNum = typeof value === 'string' ? parseInt(value) : value;
+      if (!isNaN(jumlahNum as number)) {
+        const obat = obatList.find(o => o.id === currentItem.obat_id);
+        if (obat && jumlahNum > obat.stok) {
+          setMessage({ 
+            type: 'error', 
+            text: `Jumlah ${obat.nama_obat} tidak boleh melebihi stok tersedia (${obat.stok})` 
+          });
+          return;
+        }
       }
     }
     
@@ -297,10 +300,18 @@ export default function DokterPage() {
           });
           return;
         }
-        if (item.jumlah > obat.stok) {
+        const jumlahNum = typeof item.jumlah === 'string' ? parseInt(item.jumlah) : item.jumlah;
+        if (!jumlahNum || jumlahNum <= 0) {
           setMessage({ 
             type: 'error', 
-            text: `Stok ${obat.nama_obat} tidak cukup. Stok tersedia: ${obat.stok}, jumlah yang diminta: ${item.jumlah}` 
+            text: `Jumlah ${obat.nama_obat} harus diisi dan lebih dari 0` 
+          });
+          return;
+        }
+        if (jumlahNum > obat.stok) {
+          setMessage({ 
+            type: 'error', 
+            text: `Stok ${obat.nama_obat} tidak cukup. Stok tersedia: ${obat.stok}, jumlah yang diminta: ${jumlahNum}` 
           });
           return;
         }
@@ -312,6 +323,12 @@ export default function DokterPage() {
 
     try {
       const user_name = localStorage.getItem('user_name') || '';
+      
+      // Convert resepItems untuk memastikan jumlah adalah number
+      const resepItemsToSave = resepItems.map(item => ({
+        ...item,
+        jumlah: typeof item.jumlah === 'string' ? parseInt(item.jumlah) || 1 : item.jumlah
+      }));
       
       // Update patient data
       const updateResponse = await fetch(`/api/patients/${selectedPatient.id}`, {
@@ -328,7 +345,7 @@ export default function DokterPage() {
           djj_anak: parseInt(formData.djj_anak) || null,
           diagnosa: formData.diagnosa || null,
           terapi: formData.terapi || null,
-          resep: resepItems.length > 0 ? JSON.stringify(resepItems) : null,
+          resep: resepItemsToSave.length > 0 ? JSON.stringify(resepItemsToSave) : null,
           dokter_pemeriksa: user_name,
           status: 'dokter',
         }),
@@ -341,9 +358,9 @@ export default function DokterPage() {
       }
 
       // Save resep details
-      if (resepItems.length > 0) {
+      if (resepItemsToSave.length > 0) {
         const resepErrors: string[] = [];
-        for (const item of resepItems) {
+        for (const item of resepItemsToSave) {
           if (item.obat_id > 0) {
             const resepResponse = await fetch('/api/resep', {
               method: 'POST',
@@ -353,7 +370,7 @@ export default function DokterPage() {
               body: JSON.stringify({
                 pemeriksaan_id: selectedPatient.id,
                 obat_id: item.obat_id,
-                jumlah: item.jumlah,
+                jumlah: typeof item.jumlah === 'string' ? parseInt(item.jumlah) || 1 : item.jumlah,
                 aturan_pakai: item.aturan_pakai,
               }),
             });
@@ -639,9 +656,10 @@ export default function DokterPage() {
                         <input
                           type="number"
                           value={item.jumlah}
-                          onChange={(e) => handleResepChange(index, 'jumlah', parseInt(e.target.value) || 1)}
+                          onChange={(e) => handleResepChange(index, 'jumlah', e.target.value === '' ? '' : parseInt(e.target.value) || '')}
                           min="1"
                           max={item.obat_id > 0 ? obatList.find(o => o.id === item.obat_id)?.stok || 0 : undefined}
+                          placeholder="Masukkan jumlah"
                           className={styles.input}
                         />
                       </div>

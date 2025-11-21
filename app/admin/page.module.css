@@ -42,10 +42,15 @@
   border-radius: 12px;
   padding: 32px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 32px;
 }
 
 .section {
-  margin-bottom: 32px;
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
 }
 
 .sectionTitle {
@@ -230,6 +235,221 @@ select.input option {
   font-size: 14px;
 }
 
+.patientTable {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.patientTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.patientTable th,
+.patientTable td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.patientTable th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.patientTable tbody tr:hover {
+  background: #f9fafb;
+}
+
+.cellName {
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.cellDate {
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.empty {
+  text-align: center;
+  color: #6b7280;
+  padding: 40px 20px;
+  font-style: italic;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.statusPendaftaran {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.statusPerawat {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.statusDokter {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.statusFarmasi {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.statusSelesai {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.btnRefresh {
+  padding: 8px 16px;
+  border: 2px solid #0ea5e9;
+  border-radius: 8px;
+  background-color: white;
+  color: #0ea5e9;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btnRefresh:hover:not(:disabled) {
+  background-color: #0ea5e9;
+  color: white;
+}
+
+.btnRefresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnEditDokter {
+  padding: 6px 12px;
+  border: 2px solid #0ea5e9;
+  border-radius: 6px;
+  background-color: white;
+  color: #0ea5e9;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btnEditDokter:hover:not(:disabled) {
+  background-color: #0ea5e9;
+  color: white;
+}
+
+.btnEditDokter:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: slideDown 0.3s ease-out;
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.modalBody {
+  margin-bottom: 24px;
+}
+
+.modalActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btnCancel {
+  padding: 10px 20px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: white;
+  color: #374151;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btnCancel:hover:not(:disabled) {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.btnCancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnSave {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btnSave:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+}
+
+.btnSave:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 12px;
@@ -237,6 +457,11 @@ select.input option {
 
   .form {
     padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .section {
+    padding: 16px;
   }
 
   .formGrid {
@@ -261,6 +486,52 @@ select.input option {
 
   select.input {
     padding-right: 40px;
+  }
+
+  .patientTable {
+    font-size: 14px;
+  }
+
+  .patientTable th,
+  .patientTable td {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+
+  .btnRefresh {
+    width: 100%;
+    margin-top: 12px;
+  }
+
+  .btnEditDokter {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .modalContent {
+    padding: 20px;
+    max-width: 90%;
+  }
+
+  .modalActions {
+    flex-direction: column;
+  }
+
+  .btnCancel,
+  .btnSave {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .patientTable th,
+  .patientTable td {
+    padding: 6px 2px;
+    font-size: 11px;
+  }
+
+  .cellDate {
+    font-size: 11px;
   }
 }
 
