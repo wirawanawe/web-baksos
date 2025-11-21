@@ -1,0 +1,256 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.alert {
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  font-weight: 500;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert.success {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.alert.error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.patientList {
+  display: grid;
+  gap: 12px;
+}
+
+.patientCard {
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.patientCard:hover {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.patientCard.selected {
+  border-color: #10b981;
+  background: #d1fae5;
+}
+
+.patientInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.patientInfo strong {
+  font-size: 16px;
+  color: #1a202c;
+}
+
+.patientInfo span {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.diagnosa {
+  font-weight: 600;
+  color: #059669 !important;
+}
+
+.empty {
+  text-align: center;
+  color: #6b7280;
+  padding: 40px 20px;
+}
+
+.form {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+}
+
+.selectedPatientInfo {
+  background: #d1fae5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.selectedPatientInfo h3 {
+  margin: 0 0 16px 0;
+  color: #1a202c;
+  font-size: 18px;
+}
+
+.patientData {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.patientData p {
+  margin: 8px 0;
+  color: #374151;
+}
+
+.resepTable {
+  overflow-x: auto;
+}
+
+.resepTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.resepTable th,
+.resepTable td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.resepTable th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+.resepTable tbody tr:hover {
+  background: #f9fafb;
+}
+
+.emptyResep {
+  text-align: center;
+  color: #9ca3af;
+  padding: 20px;
+  font-style: italic;
+}
+
+.formActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.btnPrimary {
+  flex: 1;
+  min-width: 200px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnReset {
+  padding: 14px 24px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+  color: #374151;
+}
+
+.btnReset:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.footer {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 24px 20px;
+  margin-top: 32px;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 12px;
+  }
+
+  .form {
+    padding: 20px;
+  }
+
+  .resepTable {
+    font-size: 14px;
+  }
+
+  .resepTable th,
+  .resepTable td {
+    padding: 8px;
+  }
+
+  .formActions {
+    flex-direction: column;
+  }
+
+  .btnPrimary,
+  .btnReset {
+    width: 100%;
+  }
+}
+

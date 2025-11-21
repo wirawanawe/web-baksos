@@ -40,8 +40,12 @@ export default function RekapitulasiPage() {
   const [endDate, setEndDate] = useState('');
 
   const handleLogout = () => {
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('user_name');
     localStorage.removeItem('dokter_pemeriksa');
     localStorage.removeItem('tanggal_pemeriksaan');
+    localStorage.removeItem('tanggal_praktik');
+    localStorage.removeItem('dokter_id');
     router.push('/login');
   };
 
