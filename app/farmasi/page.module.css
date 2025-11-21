@@ -3,6 +3,9 @@
   margin: 0 auto;
   padding: 20px;
   min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .alert {
@@ -43,6 +46,9 @@
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .sectionTitle {
@@ -111,6 +117,9 @@
   padding: 32px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .selectedPatientInfo {
@@ -226,31 +235,247 @@
   font-size: 14px;
 }
 
+.addResepForm {
+  padding: 16px;
+  background-color: #f0fdf4;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #d1fae5;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.addResepFormTitle {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: #1a202c;
+  font-weight: 600;
+}
+
+.addResepFormGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr auto;
+  gap: 12px;
+  align-items: end;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.addResepFormGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.addResepFormLabel {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.addResepFormInput,
+.addResepFormSelect {
+  width: 100%;
+  padding: 8px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: white;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.addResepFormInput:focus,
+.addResepFormSelect:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.addResepFormButton {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  background-color: #10b981;
+  color: white;
+  height: fit-content;
+}
+
+.addResepFormButton:hover:not(:disabled) {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.addResepFormButton:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.resepHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.resepHeaderTitle {
+  margin-bottom: 0;
+  border-bottom: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.btnAddResep {
+  padding: 8px 16px;
+  border: 2px solid #10b981;
+  border-radius: 8px;
+  background-color: white;
+  color: #10b981;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btnAddResep:hover {
+  background-color: #10b981;
+  color: white;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 12px;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .form {
-    padding: 20px;
+    padding: 16px;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .section {
+    padding: 16px;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .resepTable {
     font-size: 14px;
+    overflow-x: auto;
+    width: 100%;
   }
 
   .resepTable th,
   .resepTable td {
-    padding: 8px;
+    padding: 8px 4px;
+    font-size: 12px;
   }
 
   .formActions {
     flex-direction: column;
+    width: 100%;
   }
 
   .btnPrimary,
   .btnReset {
     width: 100%;
+    min-width: unset;
+  }
+
+  .resepHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .resepHeaderTitle {
+    width: 100%;
+    font-size: 18px;
+  }
+
+  .btnAddResep {
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  .addResepForm {
+    padding: 12px;
+    width: 100%;
+  }
+
+  .addResepFormGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .addResepFormGroup {
+    width: 100%;
+  }
+
+  .addResepFormButton {
+    width: 100%;
+    padding: 10px 16px;
+    white-space: normal;
+  }
+
+  .addResepFormInput,
+  .addResepFormSelect {
+    width: 100%;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 8px;
+  }
+
+  .form {
+    padding: 12px;
+  }
+
+  .section {
+    padding: 12px;
+  }
+
+  .resepTable th,
+  .resepTable td {
+    padding: 6px 2px;
+    font-size: 11px;
+  }
+
+  .addResepForm {
+    padding: 10px;
+  }
+
+  .addResepFormTitle {
+    font-size: 14px;
+  }
+
+  .addResepFormLabel {
+    font-size: 13px;
   }
 }
 

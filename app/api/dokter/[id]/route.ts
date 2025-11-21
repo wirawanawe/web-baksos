@@ -33,9 +33,9 @@ export async function DELETE(
 
     const namaDokter = dokterRows[0].nama_dokter;
 
-    // Cek apakah dokter digunakan di patients (dokter_pemeriksa)
+    // Cek apakah dokter digunakan di pemeriksaan (dokter_pemeriksa)
     const [patientRows] = await pool.execute(
-      'SELECT COUNT(*) as count FROM patients WHERE dokter_pemeriksa = ?',
+      'SELECT COUNT(*) as count FROM pemeriksaan WHERE dokter_pemeriksa = ?',
       [namaDokter]
     ) as any[];
 

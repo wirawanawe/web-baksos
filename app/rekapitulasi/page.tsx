@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import { formatAge } from '@/lib/formatAge';
 import styles from './page.module.css';
 
 interface Patient {
@@ -13,6 +14,7 @@ interface Patient {
   no_telepon: string | null;
   jenis_kelamin: string;
   usia: number;
+  tanggal_lahir?: string;
   alamat: string;
   tinggi_badan: number | null;
   berat_badan: number | null;
@@ -142,7 +144,7 @@ export default function RekapitulasiPage() {
 
     try {
       // Fetch resep details
-      const response = await fetch(`/api/resep?patient_id=${patient.id}`);
+      const response = await fetch(`/api/resep?pemeriksaan_id=${patient.id}`);
       const result = await response.json();
       if (result.success) {
         setResepDetails(result.data || []);
@@ -254,7 +256,7 @@ export default function RekapitulasiPage() {
                     </td>
                     <td className={styles.cellName}>{patient.nama}</td>
                     <td>{patient.jenis_kelamin}</td>
-                    <td>{patient.usia}</td>
+                    <td>{formatAge(patient.usia, patient.tanggal_lahir)}</td>
                     <td className={styles.cellAddress}>{patient.alamat}</td>
                     <td>
                       {patient.tinggi_badan && patient.berat_badan
@@ -317,7 +319,7 @@ export default function RekapitulasiPage() {
                   </div>
                   <div className={styles.detailItem}>
                     <label>Usia:</label>
-                    <span>{selectedPatient.usia} tahun</span>
+                    <span>{formatAge(selectedPatient.usia, selectedPatient.tanggal_lahir)}</span>
                   </div>
                   <div className={styles.detailItem}>
                     <label>Alamat:</label>

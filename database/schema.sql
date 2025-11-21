@@ -1,15 +1,29 @@
 CREATE DATABASE IF NOT EXISTS baksos_db;
 USE baksos_db;
 
-CREATE TABLE IF NOT EXISTS patients (
+-- Tabel untuk data personal pasien
+CREATE TABLE IF NOT EXISTS pasien (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tanggal_pemeriksaan DATE,
   nama VARCHAR(255) NOT NULL,
   no_ktp VARCHAR(20),
   no_telepon VARCHAR(20),
   jenis_kelamin ENUM('L', 'P') NOT NULL,
-  usia INT NOT NULL,
+  tanggal_lahir DATE NOT NULL,
   alamat TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_no_ktp (no_ktp),
+  UNIQUE KEY uk_no_telepon (no_telepon),
+  INDEX idx_nama (nama),
+  INDEX idx_no_ktp (no_ktp),
+  INDEX idx_no_telepon (no_telepon)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabel untuk hasil pemeriksaan pasien
+CREATE TABLE IF NOT EXISTS pemeriksaan (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  pasien_id INT NOT NULL,
+  tanggal_pemeriksaan DATE,
   -- Data dari Perawat
   tinggi_badan DECIMAL(5,2),
   berat_badan DECIMAL(5,2),
@@ -34,9 +48,12 @@ CREATE TABLE IF NOT EXISTS patients (
   status ENUM('pendaftaran', 'perawat', 'dokter', 'farmasi', 'selesai') DEFAULT 'pendaftaran',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (pasien_id) REFERENCES pasien(id) ON DELETE CASCADE,
+  INDEX idx_pasien_id (pasien_id),
+  INDEX idx_tanggal_pemeriksaan (tanggal_pemeriksaan),
+  INDEX idx_status (status),
   INDEX idx_created_at (created_at),
-  INDEX idx_nama (nama),
-  INDEX idx_status (status)
+  INDEX idx_dokter_pemeriksa (dokter_pemeriksa)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabel untuk data obat
@@ -54,14 +71,14 @@ CREATE TABLE IF NOT EXISTS obat (
 -- Tabel untuk resep pasien (detail obat yang diberikan)
 CREATE TABLE IF NOT EXISTS resep_detail (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  patient_id INT NOT NULL,
+  pemeriksaan_id INT NOT NULL,
   obat_id INT NOT NULL,
   jumlah INT NOT NULL,
   aturan_pakai TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+  FOREIGN KEY (pemeriksaan_id) REFERENCES pemeriksaan(id) ON DELETE CASCADE,
   FOREIGN KEY (obat_id) REFERENCES obat(id) ON DELETE CASCADE,
-  INDEX idx_patient_id (patient_id)
+  INDEX idx_pemeriksaan_id (pemeriksaan_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabel untuk data dokter

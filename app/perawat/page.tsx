@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import { formatAge } from '@/lib/formatAge';
 import styles from './page.module.css';
 
 interface Patient {
@@ -12,6 +13,7 @@ interface Patient {
   no_telepon: string;
   jenis_kelamin: string;
   usia: number;
+  tanggal_lahir?: string;
   alamat: string;
   dokter_pemeriksa: string | null;
   status: string;
@@ -237,7 +239,7 @@ export default function PerawatPage() {
               >
                 <div className={styles.patientInfo}>
                   <strong>{patient.nama}</strong>
-                  <span>Usia: {patient.usia} tahun | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                  <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
                   {patient.dokter_pemeriksa && (
                     <span style={{ color: '#666', fontSize: '0.9em' }}>Dokter: {patient.dokter_pemeriksa}</span>
                   )}

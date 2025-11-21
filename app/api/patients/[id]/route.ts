@@ -8,13 +8,120 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const connection = await pool.getConnection();
+  
   try {
-    const patientId = params.id;
+    await connection.beginTransaction();
+    
+    const pemeriksaanId = params.id;
     const data = await request.json();
 
+    // Ambil pemeriksaan untuk mendapatkan pasien_id
+    const [pemeriksaanRows] = await connection.execute(
+      'SELECT pasien_id FROM pemeriksaan WHERE id = ?',
+      [pemeriksaanId]
+    ) as any[];
+
+    if (!pemeriksaanRows || pemeriksaanRows.length === 0) {
+      await connection.rollback();
+      connection.release();
+      return NextResponse.json(
+        { success: false, message: 'Pemeriksaan tidak ditemukan' },
+        { status: 404 }
+      );
+    }
+
+    const pasienId = pemeriksaanRows[0].pasien_id;
+
+    // Handle update data personal pasien
     const {
+      nama,
       no_ktp,
       no_telepon,
+      jenis_kelamin,
+      tanggal_lahir,
+      alamat,
+    } = data;
+
+    // Validasi: No. KTP dan No. Telepon tidak boleh sama dengan pasien lain (kecuali pasien yang sedang diupdate)
+    if (no_ktp !== undefined && no_ktp) {
+      const [existingKTP] = await connection.execute(
+        'SELECT id, nama FROM pasien WHERE no_ktp = ? AND id != ?',
+        [no_ktp, pasienId]
+      ) as any[];
+      
+      if (existingKTP && existingKTP.length > 0) {
+        await connection.rollback();
+        connection.release();
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: `No. KTP "${no_ktp}" sudah terdaftar untuk pasien "${existingKTP[0].nama}"` 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (no_telepon !== undefined && no_telepon) {
+      const [existingTelp] = await connection.execute(
+        'SELECT id, nama FROM pasien WHERE no_telepon = ? AND id != ?',
+        [no_telepon, pasienId]
+      ) as any[];
+      
+      if (existingTelp && existingTelp.length > 0) {
+        await connection.rollback();
+        connection.release();
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: `No. Telepon "${no_telepon}" sudah terdaftar untuk pasien "${existingTelp[0].nama}"` 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Update data pasien jika ada perubahan
+    const pasienUpdates: string[] = [];
+    const pasienValues: any[] = [];
+
+    if (nama !== undefined) {
+      pasienUpdates.push('nama = ?');
+      pasienValues.push(nama);
+    }
+    if (no_ktp !== undefined) {
+      pasienUpdates.push('no_ktp = ?');
+      pasienValues.push(no_ktp || null);
+    }
+    if (no_telepon !== undefined) {
+      pasienUpdates.push('no_telepon = ?');
+      pasienValues.push(no_telepon || null);
+    }
+    if (jenis_kelamin !== undefined) {
+      pasienUpdates.push('jenis_kelamin = ?');
+      pasienValues.push(jenis_kelamin);
+    }
+    if (tanggal_lahir !== undefined) {
+      pasienUpdates.push('tanggal_lahir = ?');
+      pasienValues.push(tanggal_lahir || null);
+    }
+    if (alamat !== undefined) {
+      pasienUpdates.push('alamat = ?');
+      pasienValues.push(alamat);
+    }
+
+    if (pasienUpdates.length > 0) {
+      pasienValues.push(pasienId);
+      await connection.execute(
+        `UPDATE pasien SET ${pasienUpdates.join(', ')} WHERE id = ?`,
+        pasienValues
+      );
+    }
+
+    // Handle update data pemeriksaan
+    const {
+      tanggal_pemeriksaan,
       tinggi_badan,
       berat_badan,
       tensi_darah_sistol,
@@ -36,52 +143,13 @@ export async function PUT(
       status,
     } = data;
 
-    // Validasi: No. KTP dan No. Telepon tidak boleh sama dengan pasien lain (kecuali pasien yang sedang diupdate)
-    if (no_ktp !== undefined && no_ktp) {
-      const [existingKTP] = await pool.execute(
-        'SELECT id, nama FROM patients WHERE no_ktp = ? AND id != ?',
-        [no_ktp, patientId]
-      ) as any[];
-      
-      if (existingKTP && existingKTP.length > 0) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            message: `No. KTP "${no_ktp}" sudah terdaftar untuk pasien "${existingKTP[0].nama}"` 
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    if (no_telepon !== undefined && no_telepon) {
-      const [existingTelp] = await pool.execute(
-        'SELECT id, nama FROM patients WHERE no_telepon = ? AND id != ?',
-        [no_telepon, patientId]
-      ) as any[];
-      
-      if (existingTelp && existingTelp.length > 0) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            message: `No. Telepon "${no_telepon}" sudah terdaftar untuk pasien "${existingTelp[0].nama}"` 
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Build dynamic update query
+    // Build dynamic update query untuk pemeriksaan
     const updates: string[] = [];
     const values: any[] = [];
 
-    if (no_ktp !== undefined) {
-      updates.push('no_ktp = ?');
-      values.push(no_ktp || null);
-    }
-    if (no_telepon !== undefined) {
-      updates.push('no_telepon = ?');
-      values.push(no_telepon || null);
+    if (tanggal_pemeriksaan !== undefined) {
+      updates.push('tanggal_pemeriksaan = ?');
+      values.push(tanggal_pemeriksaan || null);
     }
     if (tinggi_badan !== undefined) {
       updates.push('tinggi_badan = ?');
@@ -160,23 +228,33 @@ export async function PUT(
       values.push(status);
     }
 
-    if (updates.length === 0) {
+    if (updates.length === 0 && pasienUpdates.length === 0) {
+      await connection.rollback();
+      connection.release();
       return NextResponse.json(
         { success: false, message: 'Tidak ada data yang diupdate' },
         { status: 400 }
       );
     }
 
-    values.push(patientId);
+    if (updates.length > 0) {
+      values.push(pemeriksaanId);
+      await connection.execute(
+        `UPDATE pemeriksaan SET ${updates.join(', ')} WHERE id = ?`,
+        values
+      );
+    }
 
-    const query = `UPDATE patients SET ${updates.join(', ')} WHERE id = ?`;
-    await pool.execute(query, values);
+    await connection.commit();
+    connection.release();
 
     return NextResponse.json({
       success: true,
       message: 'Data pasien berhasil diupdate',
     });
   } catch (error: any) {
+    await connection.rollback();
+    connection.release();
     console.error('Error updating patient data:', error);
     return NextResponse.json(
       { success: false, message: 'Gagal mengupdate data pasien', error: error.message },
@@ -191,16 +269,52 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const patientId = params.id;
+    const pemeriksaanId = params.id;
     const [rows] = await pool.execute(
-      'SELECT * FROM patients WHERE id = ?',
-      [patientId]
+      `SELECT 
+        p.id as pasien_id,
+        p.nama,
+        p.no_ktp,
+        p.no_telepon,
+        p.jenis_kelamin,
+        p.tanggal_lahir,
+        TIMESTAMPDIFF(YEAR, p.tanggal_lahir, CURDATE()) as usia,
+        p.alamat,
+        p.created_at as pasien_created_at,
+        p.updated_at as pasien_updated_at,
+        pm.id,
+        pm.tanggal_pemeriksaan,
+        pm.tinggi_badan,
+        pm.berat_badan,
+        pm.tensi_darah_sistol,
+        pm.tensi_darah_diastol,
+        pm.kolesterol,
+        pm.gds,
+        pm.as_urat,
+        pm.keluhan,
+        pm.anamnesa,
+        pm.pemeriksaan_fisik,
+        pm.hpht,
+        pm.hpl,
+        pm.tfu,
+        pm.djj_anak,
+        pm.diagnosa,
+        pm.terapi,
+        pm.resep,
+        pm.dokter_pemeriksa,
+        pm.status,
+        pm.created_at,
+        pm.updated_at
+      FROM pemeriksaan pm
+      INNER JOIN pasien p ON pm.pasien_id = p.id
+      WHERE pm.id = ?`,
+      [pemeriksaanId]
     );
 
     const patients = rows as any[];
     if (patients.length === 0) {
       return NextResponse.json(
-        { success: false, message: 'Pasien tidak ditemukan' },
+        { success: false, message: 'Pemeriksaan tidak ditemukan' },
         { status: 404 }
       );
     }
@@ -214,4 +328,3 @@ export async function GET(
     );
   }
 }
-

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import { formatAge } from '@/lib/formatAge';
 import styles from './page.module.css';
 
 export default function AdminPage() {
@@ -18,10 +19,25 @@ export default function AdminPage() {
     no_ktp: '',
     no_telepon: '',
     jenis_kelamin: '',
-    usia: '',
+    tanggal_lahir: '',
     alamat: '',
     dokter_pemeriksa: '',
   });
+
+  // Fungsi untuk menghitung usia dari tanggal lahir
+  const calculateAge = (tanggalLahir: string): number | null => {
+    if (!tanggalLahir) return null;
+    const today = new Date();
+    const birthDate = new Date(tanggalLahir);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const usia = calculateAge(formData.tanggal_lahir);
 
   useEffect(() => {
     const role = localStorage.getItem('user_role');
@@ -102,7 +118,6 @@ export default function AdminPage() {
         },
         body: JSON.stringify({
           ...formData,
-          usia: parseInt(formData.usia) || null,
           tanggal_pemeriksaan: tanggalPraktik || null,
           status: 'pendaftaran',
         }),
@@ -242,17 +257,30 @@ export default function AdminPage() {
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="usia">Usia <span className={styles.required}>*</span></label>
-              <input
-                type="number"
-                id="usia"
-                name="usia"
-                value={formData.usia}
-                onChange={handleChange}
-                required
-                min="0"
-                className={styles.input}
-              />
+              <label htmlFor="tanggal_lahir">Tanggal Lahir <span className={styles.required}>*</span></label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input
+                  type="date"
+                  id="tanggal_lahir"
+                  name="tanggal_lahir"
+                  value={formData.tanggal_lahir}
+                  onChange={handleChange}
+                  required
+                  max={new Date().toISOString().split('T')[0]}
+                  className={styles.input}
+                  style={{ flex: 1 }}
+                />
+                {usia !== null && (
+                  <span style={{ 
+                    fontSize: '14px', 
+                    color: '#666', 
+                    fontWeight: '500',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Usia: {formatAge(usia, formData.tanggal_lahir)}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className={styles.formGroupFull}>
@@ -286,7 +314,7 @@ export default function AdminPage() {
                 no_ktp: '',
                 no_telepon: '',
                 jenis_kelamin: '',
-                usia: '',
+                tanggal_lahir: '',
                 alamat: '',
                 dokter_pemeriksa: '',
               });

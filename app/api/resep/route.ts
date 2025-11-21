@@ -11,11 +11,12 @@ export async function POST(request: NextRequest) {
     await connection.beginTransaction();
     
     const data = await request.json();
-    const { patient_id, obat_id, jumlah, aturan_pakai } = data;
+    const { pemeriksaan_id, obat_id, jumlah, aturan_pakai } = data;
 
     // Validasi: jumlah harus lebih dari 0
     if (!jumlah || jumlah <= 0) {
       await connection.rollback();
+      connection.release();
       return NextResponse.json(
         { success: false, message: 'Jumlah obat harus lebih dari 0' },
         { status: 400 }
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
 
     if (!obatRows || obatRows.length === 0) {
       await connection.rollback();
+      connection.release();
       return NextResponse.json(
         { success: false, message: 'Obat tidak ditemukan' },
         { status: 404 }
@@ -42,6 +44,7 @@ export async function POST(request: NextRequest) {
     // Validasi: stok harus cukup
     if (stokTersedia < jumlah) {
       await connection.rollback();
+      connection.release();
       return NextResponse.json(
         { 
           success: false, 
@@ -53,8 +56,8 @@ export async function POST(request: NextRequest) {
 
     // Simpan resep detail
     const [result] = await connection.execute(
-      'INSERT INTO resep_detail (patient_id, obat_id, jumlah, aturan_pakai) VALUES (?, ?, ?, ?)',
-      [patient_id, obat_id, jumlah, aturan_pakai || null]
+      'INSERT INTO resep_detail (pemeriksaan_id, obat_id, jumlah, aturan_pakai) VALUES (?, ?, ?, ?)',
+      [pemeriksaan_id, obat_id, jumlah, aturan_pakai || null]
     );
 
     // Kurangi stok obat
@@ -65,6 +68,7 @@ export async function POST(request: NextRequest) {
     );
 
     await connection.commit();
+    connection.release();
 
     return NextResponse.json({
       success: true,
@@ -74,36 +78,59 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     await connection.rollback();
+    connection.release();
     console.error('Error creating resep:', error);
     return NextResponse.json(
       { success: false, message: 'Gagal menambahkan resep', error: error.message },
       { status: 500 }
     );
-  } finally {
-    connection.release();
   }
 }
 
-// Get resep by patient_id
+// Get resep by pemeriksaan_id
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const patientId = searchParams.get('patient_id');
+    const pemeriksaanId = searchParams.get('pemeriksaan_id');
+    const patientId = searchParams.get('patient_id'); // Backward compatibility
 
-    if (!patientId) {
+    // Support both pemeriksaan_id (new) and patient_id (old) for backward compatibility
+    const idParam = pemeriksaanId || patientId;
+
+    if (!idParam) {
       return NextResponse.json(
-        { success: false, message: 'patient_id diperlukan' },
+        { success: false, message: 'pemeriksaan_id atau patient_id diperlukan' },
         { status: 400 }
       );
+    }
+
+    // If patient_id is used, we need to get pemeriksaan_id first
+    let pemeriksaanIdToUse = idParam;
+    
+    if (patientId && !pemeriksaanId) {
+      // Get the latest pemeriksaan for this patient
+      const [pemeriksaanRows] = await pool.execute(
+        'SELECT id FROM pemeriksaan WHERE pasien_id = ? ORDER BY created_at DESC LIMIT 1',
+        [patientId]
+      ) as any[];
+      
+      if (pemeriksaanRows && pemeriksaanRows.length > 0) {
+        pemeriksaanIdToUse = pemeriksaanRows[0].id;
+      } else {
+        return NextResponse.json(
+          { success: false, message: 'Pemeriksaan tidak ditemukan untuk pasien ini' },
+          { status: 404 }
+        );
+      }
     }
 
     const [rows] = await pool.execute(
       `SELECT rd.*, o.nama_obat, o.satuan 
        FROM resep_detail rd 
        JOIN obat o ON rd.obat_id = o.id 
-       WHERE rd.patient_id = ? 
+       WHERE rd.pemeriksaan_id = ? 
        ORDER BY rd.created_at DESC`,
-      [patientId]
+      [pemeriksaanIdToUse]
     );
 
     return NextResponse.json({ success: true, data: rows });
@@ -128,6 +155,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!resepId) {
       await connection.rollback();
+      connection.release();
       return NextResponse.json(
         { success: false, message: 'ID resep diperlukan' },
         { status: 400 }
@@ -142,6 +170,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!resepRows || resepRows.length === 0) {
       await connection.rollback();
+      connection.release();
       return NextResponse.json(
         { success: false, message: 'Resep tidak ditemukan' },
         { status: 404 }
@@ -175,6 +204,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     await connection.commit();
+    connection.release();
 
     return NextResponse.json({
       success: true,
@@ -182,13 +212,11 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error: any) {
     await connection.rollback();
+    connection.release();
     console.error('Error deleting resep:', error);
     return NextResponse.json(
       { success: false, message: 'Gagal menghapus resep', error: error.message },
       { status: 500 }
     );
-  } finally {
-    connection.release();
   }
 }
-

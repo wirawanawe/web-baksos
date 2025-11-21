@@ -4,11 +4,17 @@ import pool from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  const connection = await pool.getConnection();
+  
   try {
+    await connection.beginTransaction();
+
     // Test database connection first
     try {
-      await pool.execute('SELECT 1');
+      await connection.execute('SELECT 1');
     } catch (dbError: any) {
+      await connection.rollback();
+      connection.release();
       console.error('Database connection error:', dbError);
       return NextResponse.json(
         { 
@@ -28,7 +34,7 @@ export async function POST(request: NextRequest) {
       no_ktp,
       no_telepon,
       jenis_kelamin,
-      usia,
+      tanggal_lahir,
       alamat,
       tinggi_badan,
       berat_badan,
@@ -53,12 +59,14 @@ export async function POST(request: NextRequest) {
 
     // Validasi: No. KTP dan No. Telepon tidak boleh sama dengan pasien lain
     if (no_ktp) {
-      const [existingKTP] = await pool.execute(
-        'SELECT id, nama FROM patients WHERE no_ktp = ?',
+      const [existingKTP] = await connection.execute(
+        'SELECT id, nama FROM pasien WHERE no_ktp = ?',
         [no_ktp]
       ) as any[];
       
       if (existingKTP && existingKTP.length > 0) {
+        await connection.rollback();
+        connection.release();
         return NextResponse.json(
           { 
             success: false, 
@@ -70,12 +78,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (no_telepon) {
-      const [existingTelp] = await pool.execute(
-        'SELECT id, nama FROM patients WHERE no_telepon = ?',
+      const [existingTelp] = await connection.execute(
+        'SELECT id, nama FROM pasien WHERE no_telepon = ?',
         [no_telepon]
       ) as any[];
       
       if (existingTelp && existingTelp.length > 0) {
+        await connection.rollback();
+        connection.release();
         return NextResponse.json(
           { 
             success: false, 
@@ -86,11 +96,55 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const [result] = await pool.execute(
-      `INSERT INTO patients (
-        tanggal_pemeriksaan,
-        nama, no_ktp, no_telepon,
-        jenis_kelamin, usia, alamat,
+    // Insert atau ambil pasien_id
+    let pasienId: number;
+    
+    // Cek apakah pasien sudah ada berdasarkan no_ktp atau no_telepon
+    if (no_ktp || no_telepon) {
+      let checkQuery = 'SELECT id FROM pasien WHERE ';
+      const checkParams: any[] = [];
+      
+      if (no_ktp && no_telepon) {
+        checkQuery += '(no_ktp = ? OR no_telepon = ?)';
+        checkParams.push(no_ktp, no_telepon);
+      } else if (no_ktp) {
+        checkQuery += 'no_ktp = ?';
+        checkParams.push(no_ktp);
+      } else {
+        checkQuery += 'no_telepon = ?';
+        checkParams.push(no_telepon);
+      }
+      
+      const [existingPasien] = await connection.execute(checkQuery, checkParams) as any[];
+      
+      if (existingPasien && existingPasien.length > 0) {
+        pasienId = existingPasien[0].id;
+        // Update data pasien jika ada perubahan
+        await connection.execute(
+          'UPDATE pasien SET nama = ?, jenis_kelamin = ?, tanggal_lahir = ?, alamat = ? WHERE id = ?',
+          [nama, jenis_kelamin, tanggal_lahir || null, alamat, pasienId]
+        );
+      } else {
+        // Insert pasien baru
+        const [pasienResult] = await connection.execute(
+          'INSERT INTO pasien (nama, no_ktp, no_telepon, jenis_kelamin, tanggal_lahir, alamat) VALUES (?, ?, ?, ?, ?, ?)',
+          [nama, no_ktp || null, no_telepon || null, jenis_kelamin, tanggal_lahir || null, alamat]
+        );
+        pasienId = (pasienResult as any).insertId;
+      }
+    } else {
+      // Jika tidak ada no_ktp dan no_telepon, insert pasien baru
+      const [pasienResult] = await connection.execute(
+        'INSERT INTO pasien (nama, no_ktp, no_telepon, jenis_kelamin, tanggal_lahir, alamat) VALUES (?, ?, ?, ?, ?, ?)',
+        [nama, null, null, jenis_kelamin, tanggal_lahir || null, alamat]
+      );
+      pasienId = (pasienResult as any).insertId;
+    }
+
+    // Insert pemeriksaan
+    const [pemeriksaanResult] = await connection.execute(
+      `INSERT INTO pemeriksaan (
+        pasien_id, tanggal_pemeriksaan,
         tinggi_badan, berat_badan,
         tensi_darah_sistol, tensi_darah_diastol,
         kolesterol, gds, as_urat,
@@ -99,15 +153,10 @@ export async function POST(request: NextRequest) {
         hpht, hpl, tfu, djj_anak,
         diagnosa, terapi, resep,
         dokter_pemeriksa, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        pasienId,
         tanggal_pemeriksaan || null,
-        nama,
-        no_ktp || null,
-        no_telepon || null,
-        jenis_kelamin,
-        usia,
-        alamat,
         tinggi_badan || null,
         berat_badan || null,
         tensi_darah_sistol || null,
@@ -130,11 +179,16 @@ export async function POST(request: NextRequest) {
       ]
     );
 
+    await connection.commit();
+    connection.release();
+
     return NextResponse.json(
-      { success: true, message: 'Data pasien berhasil disimpan', id: (result as any).insertId },
+      { success: true, message: 'Data pasien berhasil disimpan', id: (pemeriksaanResult as any).insertId, pasien_id: pasienId },
       { status: 201 }
     );
   } catch (error: any) {
+    await connection.rollback();
+    connection.release();
     console.error('Error saving patient data:', error);
     
     // Provide more specific error messages
@@ -146,7 +200,9 @@ export async function POST(request: NextRequest) {
     } else if (error.code === 'ER_BAD_DB_ERROR') {
       errorMessage = 'Database tidak ditemukan. Pastikan database sudah dibuat atau periksa nama database di .env.local';
     } else if (error.code === 'ER_NO_SUCH_TABLE') {
-      errorMessage = 'Tabel patients belum dibuat. Silakan jalankan setup database terlebih dahulu melalui /api/setup atau import file database/schema.sql ke MySQL.';
+      errorMessage = 'Tabel pasien atau pemeriksaan belum dibuat. Silakan jalankan setup database terlebih dahulu melalui /api/setup atau import file database/schema.sql ke MySQL.';
+    } else if (error.code === 'ER_DUP_ENTRY') {
+      errorMessage = 'No. KTP atau No. Telepon sudah terdaftar untuk pasien lain.';
     }
     
     return NextResponse.json(
@@ -164,44 +220,72 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const dokter_pemeriksa = searchParams.get('dokter_pemeriksa');
 
-    let query = 'SELECT * FROM patients';
+    // Query dengan JOIN antara pasien dan pemeriksaan
+    let query = `
+      SELECT 
+        p.id as pasien_id,
+        p.nama,
+        p.no_ktp,
+        p.no_telepon,
+        p.jenis_kelamin,
+        p.tanggal_lahir,
+        TIMESTAMPDIFF(YEAR, p.tanggal_lahir, CURDATE()) as usia,
+        p.alamat,
+        p.created_at as pasien_created_at,
+        p.updated_at as pasien_updated_at,
+        pm.id,
+        pm.tanggal_pemeriksaan,
+        pm.tinggi_badan,
+        pm.berat_badan,
+        pm.tensi_darah_sistol,
+        pm.tensi_darah_diastol,
+        pm.kolesterol,
+        pm.gds,
+        pm.as_urat,
+        pm.keluhan,
+        pm.anamnesa,
+        pm.pemeriksaan_fisik,
+        pm.hpht,
+        pm.hpl,
+        pm.tfu,
+        pm.djj_anak,
+        pm.diagnosa,
+        pm.terapi,
+        pm.resep,
+        pm.dokter_pemeriksa,
+        pm.status,
+        pm.created_at,
+        pm.updated_at
+      FROM pemeriksaan pm
+      INNER JOIN pasien p ON pm.pasien_id = p.id
+    `;
     const params: any[] = [];
     const conditions: string[] = [];
 
     if (startDate && endDate) {
       // Filter berdasarkan tanggal_pemeriksaan jika ada, jika tidak gunakan created_at
-      // Gunakan BETWEEN untuk rentang tanggal jika startDate dan endDate berbeda, atau = jika sama
       if (startDate === endDate) {
-        conditions.push('(tanggal_pemeriksaan = ? OR (tanggal_pemeriksaan IS NULL AND DATE(created_at) = ?))');
+        conditions.push('(pm.tanggal_pemeriksaan = ? OR (pm.tanggal_pemeriksaan IS NULL AND DATE(pm.created_at) = ?))');
         params.push(startDate, startDate);
       } else {
-        conditions.push('(tanggal_pemeriksaan BETWEEN ? AND ? OR (tanggal_pemeriksaan IS NULL AND DATE(created_at) BETWEEN ? AND ?))');
+        conditions.push('(pm.tanggal_pemeriksaan BETWEEN ? AND ? OR (pm.tanggal_pemeriksaan IS NULL AND DATE(pm.created_at) BETWEEN ? AND ?))');
         params.push(startDate, endDate, startDate, endDate);
       }
     }
 
     if (status) {
-      conditions.push('status = ?');
+      conditions.push('pm.status = ?');
       params.push(status);
     }
 
     if (dokter_pemeriksa) {
       // Gunakan LIKE untuk matching yang lebih fleksibel
-      // Match jika nama dokter di database mengandung nama yang dicari atau sebaliknya
       const searchName = dokter_pemeriksa.trim();
-      // Hapus prefix "Dr." dan suffix ", Sp.XXX" untuk mendapatkan nama inti
       const cleanName = searchName.replace(/^Dr\.\s*/i, '').replace(/,\s*Sp\.[A-Z]+$/i, '').trim();
       
-      // Log untuk debugging
       console.log('Filtering by dokter_pemeriksa:', { searchName, cleanName });
       
-      // Match dengan beberapa kondisi untuk fleksibilitas maksimal:
-      // 1. Exact match (dengan trim) - untuk kasus nama persis sama
-      // 2. Database mengandung nama inti yang dicari (tanpa Dr. dan Sp.)
-      // 3. Database mengandung nama lengkap yang dicari
-      // 4. Nama inti yang dicari mengandung nama di database (untuk kasus seperti "Dr. Agus Setiawan" vs "Agus Setiawan")
-      // 5. Nama di database mengandung nama inti (untuk kasus seperti "Agus Setiawan" vs "Dr. Agus Setiawan, Sp.B")
-      conditions.push('(TRIM(dokter_pemeriksa) = TRIM(?) OR TRIM(dokter_pemeriksa) LIKE ? OR TRIM(dokter_pemeriksa) LIKE ? OR TRIM(dokter_pemeriksa) LIKE ? OR TRIM(?) LIKE CONCAT("%", TRIM(dokter_pemeriksa), "%"))');
+      conditions.push('(TRIM(pm.dokter_pemeriksa) = TRIM(?) OR TRIM(pm.dokter_pemeriksa) LIKE ? OR TRIM(pm.dokter_pemeriksa) LIKE ? OR TRIM(pm.dokter_pemeriksa) LIKE ? OR TRIM(?) LIKE CONCAT("%", TRIM(pm.dokter_pemeriksa), "%"))');
       params.push(searchName, `%${cleanName}%`, `%${searchName}%`, `%${cleanName.split(' ')[0]}%`, searchName);
     }
 
@@ -209,24 +293,16 @@ export async function GET(request: NextRequest) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY pm.created_at DESC';
 
-    // Log query untuk debugging
     console.log('SQL Query:', query);
     console.log('SQL Params:', params);
 
     const [rows] = await pool.execute(query, params);
     
-    // Log hasil untuk debugging
     console.log('Query result count:', Array.isArray(rows) ? rows.length : 0);
     if (Array.isArray(rows) && rows.length > 0) {
       console.log('Sample result:', rows[0]);
-    } else if (dokter_pemeriksa) {
-      // Jika tidak ada hasil tapi ada filter dokter, coba cari tanpa filter dokter untuk debugging
-      const debugQuery = 'SELECT id, nama, dokter_pemeriksa, status, tanggal_pemeriksaan, DATE(created_at) as created_date FROM patients WHERE status = ? AND (tanggal_pemeriksaan = ? OR (tanggal_pemeriksaan IS NULL AND DATE(created_at) = ?)) LIMIT 10';
-      const debugParams = [searchParams.get('status') || '', searchParams.get('startDate') || '', searchParams.get('startDate') || ''];
-      const [debugRows] = await pool.execute(debugQuery, debugParams);
-      console.log('Debug - All patients with same status and date:', debugRows);
     }
 
     return NextResponse.json({ success: true, data: rows });
@@ -242,7 +318,7 @@ export async function GET(request: NextRequest) {
     } else if (error.code === 'ER_BAD_DB_ERROR') {
       errorMessage = 'Database tidak ditemukan. Pastikan database sudah dibuat atau periksa nama database di .env.local';
     } else if (error.code === 'ER_NO_SUCH_TABLE') {
-      errorMessage = 'Tabel patients belum dibuat. Silakan jalankan setup database terlebih dahulu melalui /api/setup atau import file database/schema.sql ke MySQL.';
+      errorMessage = 'Tabel pasien atau pemeriksaan belum dibuat. Silakan jalankan setup database terlebih dahulu melalui /api/setup atau import file database/schema.sql ke MySQL.';
     }
     
     return NextResponse.json(
@@ -258,8 +334,7 @@ export async function DELETE(request: NextRequest) {
     const action = searchParams.get('action');
 
     if (action === 'truncate') {
-      // Truncate tabel patients (menghapus semua data)
-      // Gunakan connection yang sama untuk memastikan foreign key checks dinonaktifkan dengan benar
+      // Truncate tabel pemeriksaan dan pasien (menghapus semua data)
       const connection = await pool.getConnection();
       
       try {
@@ -269,15 +344,20 @@ export async function DELETE(request: NextRequest) {
         // Delete semua data dari resep_detail terlebih dahulu
         await connection.query('DELETE FROM resep_detail');
         
-        // Truncate tabel patients
-        await connection.query('TRUNCATE TABLE patients');
+        // Truncate tabel pemeriksaan
+        await connection.query('TRUNCATE TABLE pemeriksaan');
+        
+        // Truncate tabel pasien
+        await connection.query('TRUNCATE TABLE pasien');
         
         // Enable kembali foreign key checks
         await connection.query('SET FOREIGN_KEY_CHECKS = 1');
         
+        connection.release();
+        
         return NextResponse.json({
           success: true,
-          message: 'Semua data pasien berhasil dihapus (truncate)',
+          message: 'Semua data pasien dan pemeriksaan berhasil dihapus (truncate)',
         });
       } catch (error: any) {
         // Pastikan foreign key checks diaktifkan kembali meskipun ada error
@@ -286,10 +366,8 @@ export async function DELETE(request: NextRequest) {
         } catch (e) {
           // Ignore error jika sudah diaktifkan
         }
-        throw error;
-      } finally {
-        // Release connection
         connection.release();
+        throw error;
       }
     }
 
@@ -312,4 +390,3 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-

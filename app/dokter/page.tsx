@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import { formatAge } from '@/lib/formatAge';
 import styles from './page.module.css';
 
 interface Patient {
@@ -12,6 +13,7 @@ interface Patient {
   no_telepon: string;
   jenis_kelamin: string;
   usia: number;
+  tanggal_lahir?: string;
   alamat: string;
   tinggi_badan: number | null;
   berat_badan: number | null;
@@ -349,7 +351,7 @@ export default function DokterPage() {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                patient_id: selectedPatient.id,
+                pemeriksaan_id: selectedPatient.id,
                 obat_id: item.obat_id,
                 jumlah: item.jumlah,
                 aturan_pakai: item.aturan_pakai,
@@ -417,7 +419,7 @@ export default function DokterPage() {
               >
                 <div className={styles.patientInfo}>
                   <strong>{patient.nama}</strong>
-                  <span>Usia: {patient.usia} tahun | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                  <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
                   {patient.keluhan && (
                     <span className={styles.keluhan}>Keluhan: {patient.keluhan}</span>
                   )}
