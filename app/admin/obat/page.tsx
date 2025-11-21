@@ -69,8 +69,11 @@ export default function ObatPage() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/obat', {
-        method: 'POST',
+      const url = editingObat ? `/api/obat/${editingObat.id}` : '/api/obat';
+      const method = editingObat ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -85,13 +88,17 @@ export default function ObatPage() {
       const result = await response.json();
 
       if (result.success) {
-        setMessage({ type: 'success', text: 'Data obat berhasil ditambahkan!' });
+        setMessage({ 
+          type: 'success', 
+          text: editingObat ? 'Data obat berhasil diupdate!' : 'Data obat berhasil ditambahkan!' 
+        });
         setFormData({
           nama_obat: '',
           satuan: '',
           stok: '',
           keterangan: '',
         });
+        setEditingObat(null);
         setShowForm(false);
         fetchObat();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -463,12 +470,12 @@ export default function ObatPage() {
                     <td>{obat.keterangan || '-'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={() => handleEdit(obat)}
-                          className={styles.btnEdit}
-                        >
-                          Edit
-                        </button>
+                      <button
+                        onClick={() => handleEdit(obat)}
+                        className={styles.btnEdit}
+                      >
+                        Edit
+                      </button>
                         <button
                           onClick={() => handleDelete(obat.id, obat.nama_obat)}
                           disabled={deleting === obat.id}

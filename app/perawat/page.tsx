@@ -195,7 +195,7 @@ export default function PerawatPage() {
 
       <div className={styles.section}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 className={styles.sectionTitle}>Daftar Pasien Menunggu Pemeriksaan</h2>
+        <h2 className={styles.sectionTitle}>Daftar Pasien Menunggu Pemeriksaan</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <label htmlFor="filterDokter" style={{ fontWeight: 'bold' }}>Filter Dokter Pemeriksa:</label>
             <select

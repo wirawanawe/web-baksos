@@ -28,14 +28,22 @@ interface ResepDetail {
   satuan: string;
 }
 
+interface EditingResep {
+  id: number;
+  jumlah: number;
+  aturan_pakai: string;
+}
+
 export default function FarmasiPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [updating, setUpdating] = useState<number | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [resepDetails, setResepDetails] = useState<ResepDetail[]>([]);
+  const [editingResep, setEditingResep] = useState<EditingResep | null>(null);
 
   useEffect(() => {
     const role = localStorage.getItem('user_role');
@@ -72,6 +80,7 @@ export default function FarmasiPage() {
   const handleSelectPatient = async (patient: Patient) => {
     setSelectedPatient(patient);
     setMessage(null);
+    setEditingResep(null);
     
     // Fetch resep details
     try {
@@ -83,6 +92,69 @@ export default function FarmasiPage() {
     } catch (error) {
       console.error('Error fetching resep:', error);
     }
+  };
+
+  const handleEditResep = (resep: ResepDetail) => {
+    setEditingResep({
+      id: resep.id,
+      jumlah: resep.jumlah,
+      aturan_pakai: resep.aturan_pakai || '',
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingResep(null);
+  };
+
+  const handleUpdateResep = async (resepId: number) => {
+    if (!editingResep || editingResep.id !== resepId) return;
+
+    setUpdating(resepId);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/resep/${resepId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jumlah: editingResep.jumlah,
+          aturan_pakai: editingResep.aturan_pakai || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Resep berhasil diupdate' });
+        setEditingResep(null);
+        
+        // Refresh resep details
+        if (selectedPatient) {
+          const resepResponse = await fetch(`/api/resep?patient_id=${selectedPatient.id}`);
+          const resepResult = await resepResponse.json();
+          if (resepResult.success) {
+            setResepDetails(resepResult.data);
+          }
+        }
+      } else {
+        setMessage({ type: 'error', text: result.message || 'Gagal mengupdate resep' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Terjadi kesalahan saat mengupdate resep' });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleResepChange = (field: 'jumlah' | 'aturan_pakai', value: any) => {
+    if (!editingResep) return;
+    
+    setEditingResep({
+      ...editingResep,
+      [field]: field === 'jumlah' ? parseInt(value) || 1 : value,
+    });
   };
 
   const handleSelesai = async () => {
@@ -185,18 +257,100 @@ export default function FarmasiPage() {
                       <th>Jumlah</th>
                       <th>Satuan</th>
                       <th>Aturan Pakai</th>
+                      <th>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {resepDetails.map((item, index) => (
-                      <tr key={item.id}>
-                        <td>{index + 1}</td>
-                        <td>{item.nama_obat}</td>
-                        <td>{item.jumlah}</td>
-                        <td>{item.satuan}</td>
-                        <td>{item.aturan_pakai || '-'}</td>
-                      </tr>
-                    ))}
+                    {resepDetails.map((item, index) => {
+                      const isEditing = editingResep?.id === item.id;
+                      
+                      return (
+                        <tr key={item.id}>
+                          <td>{index + 1}</td>
+                          <td>{item.nama_obat}</td>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                value={editingResep.jumlah}
+                                onChange={(e) => handleResepChange('jumlah', e.target.value)}
+                                min="1"
+                                style={{ width: '80px', padding: '4px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                              />
+                            ) : (
+                              item.jumlah
+                            )}
+                          </td>
+                          <td>{item.satuan}</td>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editingResep.aturan_pakai}
+                                onChange={(e) => handleResepChange('aturan_pakai', e.target.value)}
+                                placeholder="Aturan pakai"
+                                style={{ width: '200px', padding: '4px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                              />
+                            ) : (
+                              item.aturan_pakai || '-'
+                            )}
+                          </td>
+                          <td>
+                            {isEditing ? (
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  onClick={() => handleUpdateResep(item.id)}
+                                  disabled={updating === item.id}
+                                  style={{
+                                    padding: '4px 12px',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    cursor: updating === item.id ? 'not-allowed' : 'pointer',
+                                    fontSize: '12px',
+                                    opacity: updating === item.id ? 0.6 : 1
+                                  }}
+                                >
+                                  {updating === item.id ? 'Menyimpan...' : 'Simpan'}
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  disabled={updating === item.id}
+                                  style={{
+                                    padding: '4px 12px',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#6b7280',
+                                    color: 'white',
+                                    cursor: updating === item.id ? 'not-allowed' : 'pointer',
+                                    fontSize: '12px',
+                                    opacity: updating === item.id ? 0.6 : 1
+                                  }}
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleEditResep(item)}
+                                style={{
+                                  padding: '4px 12px',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  backgroundColor: '#0ea5e9',
+                                  color: 'white',
+                                  cursor: 'pointer',
+                                  fontSize: '12px'
+                                }}
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

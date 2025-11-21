@@ -3,6 +3,55 @@ import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+// Update obat by id
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const obatId = params.id;
+    const data = await request.json();
+    const { nama_obat, satuan, stok, keterangan } = data;
+
+    if (!obatId) {
+      return NextResponse.json(
+        { success: false, message: 'ID obat diperlukan' },
+        { status: 400 }
+      );
+    }
+
+    // Cek apakah obat ada
+    const [existingRows] = await pool.execute(
+      'SELECT id FROM obat WHERE id = ?',
+      [obatId]
+    ) as any[];
+
+    if (!existingRows || existingRows.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'Obat tidak ditemukan' },
+        { status: 404 }
+      );
+    }
+
+    // Update obat
+    await pool.execute(
+      'UPDATE obat SET nama_obat = ?, satuan = ?, stok = ?, keterangan = ? WHERE id = ?',
+      [nama_obat, satuan, stok || 0, keterangan || null, obatId]
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: 'Data obat berhasil diupdate',
+    });
+  } catch (error: any) {
+    console.error('Error updating obat:', error);
+    return NextResponse.json(
+      { success: false, message: 'Gagal mengupdate obat', error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 // Delete obat by id
 export async function DELETE(
   request: NextRequest,

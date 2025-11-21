@@ -555,12 +555,12 @@ export default function DokterPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={() => handleEdit(dokter)}
-                          className={styles.btnEdit}
-                        >
-                          Edit
-                        </button>
+                      <button
+                        onClick={() => handleEdit(dokter)}
+                        className={styles.btnEdit}
+                      >
+                        Edit
+                      </button>
                         <button
                           onClick={() => handleDelete(dokter.id, dokter.nama_dokter)}
                           disabled={deleting === dokter.id}

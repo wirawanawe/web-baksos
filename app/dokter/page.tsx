@@ -510,7 +510,7 @@ export default function DokterPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="tfu">TFU</label>
+                <label htmlFor="tfu">TFU (cm)</label>
                 <input
                   type="number"
                   id="tfu"
@@ -523,7 +523,7 @@ export default function DokterPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="djj_anak">DJJ Anak</label>
+                <label htmlFor="djj_anak">DJJ Anak (detak/menit)</label>
                 <input
                   type="number"
                   id="djj_anak"
