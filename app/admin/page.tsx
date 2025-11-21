@@ -133,7 +133,7 @@ export default function AdminPage() {
           no_ktp: '',
           no_telepon: '',
           jenis_kelamin: '',
-          usia: '',
+          tanggal_lahir: '',
           alamat: '',
           dokter_pemeriksa: '',
         });
