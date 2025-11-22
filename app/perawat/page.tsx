@@ -65,13 +65,18 @@ export default function PerawatPage() {
     try {
       setFetching(true);
       const tanggalPraktik = localStorage.getItem('tanggal_praktik');
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
       if (!tanggalPraktik) {
         setMessage({ type: 'error', text: 'Tanggal Praktik tidak ditemukan. Silakan login ulang.' });
         return;
       }
       
-      // Build URL dengan filter dokter jika dipilih
+      // Build URL dengan filter dokter dan lokasi
       let url = `/api/patients?status=pendaftaran&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`;
+      if (lokasiId) {
+        url += `&lokasi_id=${lokasiId}`;
+      }
       if (filterDokter) {
         url += `&dokter_pemeriksa=${encodeURIComponent(filterDokter)}`;
       }

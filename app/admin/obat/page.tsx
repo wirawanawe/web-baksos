@@ -11,17 +11,26 @@ interface Obat {
   satuan: string;
   stok: number;
   keterangan: string | null;
+  lokasi_id: number | null;
+}
+
+interface Lokasi {
+  id: number;
+  nama_lokasi: string;
+  aktif: string;
 }
 
 export default function ObatPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [fetchingLokasi, setFetchingLokasi] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [obatList, setObatList] = useState<Obat[]>([]);
+  const [lokasiList, setLokasiList] = useState<Lokasi[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
   const [editingObat, setEditingObat] = useState<Obat | null>(null);
@@ -32,6 +41,7 @@ export default function ObatPage() {
     satuan: '',
     stok: '',
     keterangan: '',
+    lokasi_id: '',
   });
 
   useEffect(() => {
@@ -39,17 +49,87 @@ export default function ObatPage() {
     if (role !== 'admin') {
       router.push('/login');
     } else {
+      fetchLokasi();
       fetchObat();
+      
+      // Auto-set lokasi_id dari localStorage saat pertama kali load
+      const lokasiIdFromStorage = localStorage.getItem('lokasi_id');
+      if (lokasiIdFromStorage && !formData.lokasi_id) {
+        setFormData(prev => ({ ...prev, lokasi_id: lokasiIdFromStorage }));
+      }
     }
   }, [router]);
+
+  const fetchLokasi = async () => {
+    try {
+      setFetchingLokasi(true);
+      const response = await fetch('/api/lokasi?aktif=true');
+      const result = await response.json();
+      if (result.success) {
+        setLokasiList(result.data || []);
+      } else if (result.message && result.message.includes('does not exist')) {
+        // Auto-create table if it doesn't exist
+        try {
+          const setupResponse = await fetch('/api/lokasi/setup', {
+            method: 'POST',
+          });
+          const setupResult = await setupResponse.json();
+          if (setupResult.success) {
+            // Retry fetch
+            const retryResponse = await fetch('/api/lokasi?aktif=true');
+            const retryResult = await retryResponse.json();
+            if (retryResult.success && retryResult.data) {
+              setLokasiList(retryResult.data || []);
+            }
+          }
+        } catch (setupError) {
+          console.error('Error setting up lokasi table:', setupError);
+        }
+      }
+    } catch (error: any) {
+      if (error.message && error.message.includes('does not exist')) {
+        // Auto-create table if it doesn't exist
+        try {
+          const setupResponse = await fetch('/api/lokasi/setup', {
+            method: 'POST',
+          });
+          const setupResult = await setupResponse.json();
+          if (setupResult.success) {
+            // Retry fetch
+            const retryResponse = await fetch('/api/lokasi?aktif=true');
+            const retryResult = await retryResponse.json();
+            if (retryResult.success && retryResult.data) {
+              setLokasiList(retryResult.data || []);
+            }
+          }
+        } catch (setupError) {
+          console.error('Error setting up lokasi table:', setupError);
+        }
+      } else {
+        console.error('Error fetching lokasi:', error);
+      }
+    } finally {
+      setFetchingLokasi(false);
+    }
+  };
 
   const fetchObat = async () => {
     try {
       setFetching(true);
-      const response = await fetch('/api/obat');
+      
+      // Ambil lokasi_id dari localStorage
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
+      // Build URL dengan filter lokasi jika ada
+      let url = '/api/obat';
+      if (lokasiId) {
+        url += `?lokasi_id=${lokasiId}`;
+      }
+      
+      const response = await fetch(url);
       const result = await response.json();
       if (result.success) {
-        setObatList(result.data);
+        setObatList(result.data || []);
       }
     } catch (error) {
       console.error('Error fetching obat:', error);
@@ -58,7 +138,7 @@ export default function ObatPage() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -69,6 +149,10 @@ export default function ObatPage() {
     setMessage(null);
 
     try {
+      // Ambil lokasi_id dari localStorage jika tidak ada di form (untuk auto-set saat create)
+      const lokasiIdFromStorage = localStorage.getItem('lokasi_id');
+      const lokasiId = formData.lokasi_id || lokasiIdFromStorage;
+      
       const url = editingObat ? `/api/obat/${editingObat.id}` : '/api/obat';
       const method = editingObat ? 'PUT' : 'POST';
 
@@ -82,6 +166,7 @@ export default function ObatPage() {
           satuan: formData.satuan,
           stok: parseInt(formData.stok) || 0,
           keterangan: formData.keterangan || null,
+          lokasi_id: lokasiId || null,
         }),
       });
 
@@ -92,11 +177,14 @@ export default function ObatPage() {
           type: 'success', 
           text: editingObat ? 'Data obat berhasil diupdate!' : 'Data obat berhasil ditambahkan!' 
         });
+        // Reset form, tapi keep lokasi_id dari localStorage untuk kemudahan
+        const lokasiIdFromStorage = localStorage.getItem('lokasi_id');
         setFormData({
           nama_obat: '',
           satuan: '',
           stok: '',
           keterangan: '',
+          lokasi_id: lokasiIdFromStorage || '',
         });
         setEditingObat(null);
         setShowForm(false);
@@ -119,6 +207,7 @@ export default function ObatPage() {
       satuan: obat.satuan,
       stok: obat.stok.toString(),
       keterangan: obat.keterangan || '',
+      lokasi_id: obat.lokasi_id ? obat.lokasi_id.toString() : '',
     });
     setShowForm(true);
   };
@@ -208,8 +297,14 @@ export default function ObatPage() {
     setMessage(null);
 
     try {
+      // Ambil lokasi_id dari localStorage
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
       const formData = new FormData();
       formData.append('file', importFile);
+      if (lokasiId) {
+        formData.append('lokasi_id', lokasiId);
+      }
 
       const response = await fetch('/api/obat/import', {
         method: 'POST',
@@ -293,11 +388,14 @@ export default function ObatPage() {
               setShowForm(!showForm);
               setEditingObat(null);
               setShowImportForm(false);
+              // Reset form, tapi keep lokasi_id dari localStorage untuk kemudahan
+              const lokasiIdFromStorage = localStorage.getItem('lokasi_id');
               setFormData({
                 nama_obat: '',
                 satuan: '',
                 stok: '',
                 keterangan: '',
+                lokasi_id: lokasiIdFromStorage || '',
               });
             }}
             className={styles.btnAdd}
@@ -423,6 +521,24 @@ export default function ObatPage() {
                 className={styles.textarea}
               />
             </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="lokasi_id">Lokasi Baksos</label>
+              <select
+                id="lokasi_id"
+                name="lokasi_id"
+                value={formData.lokasi_id}
+                onChange={handleChange}
+                className={styles.input}
+              >
+                <option value="">-- Pilih Lokasi --</option>
+                {lokasiList.map((lokasi) => (
+                  <option key={lokasi.id} value={lokasi.id}>
+                    {lokasi.nama_lokasi}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className={styles.formActions}>
@@ -452,41 +568,49 @@ export default function ObatPage() {
                   <th>Nama Obat</th>
                   <th>Satuan</th>
                   <th>Stok</th>
+                  <th>Lokasi</th>
                   <th>Keterangan</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {obatList.map((obat, index) => (
-                  <tr key={obat.id}>
-                    <td>{index + 1}</td>
-                    <td>{obat.nama_obat}</td>
-                    <td>{obat.satuan}</td>
-                    <td>
-                      <span className={obat.stok > 0 ? styles.stokAvailable : styles.stokEmpty}>
-                        {obat.stok}
-                      </span>
-                    </td>
-                    <td>{obat.keterangan || '-'}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={() => handleEdit(obat)}
-                        className={styles.btnEdit}
-                      >
-                        Edit
-                      </button>
-                        <button
-                          onClick={() => handleDelete(obat.id, obat.nama_obat)}
-                          disabled={deleting === obat.id}
-                          className={styles.btnDelete}
-                        >
-                          {deleting === obat.id ? 'Menghapus...' : 'Hapus'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {obatList.map((obat, index) => {
+                  const lokasi = obat.lokasi_id 
+                    ? lokasiList.find(l => l.id === obat.lokasi_id) 
+                    : null;
+                  
+                  return (
+                    <tr key={obat.id}>
+                      <td>{index + 1}</td>
+                      <td>{obat.nama_obat}</td>
+                      <td>{obat.satuan}</td>
+                      <td>
+                        <span className={obat.stok > 0 ? styles.stokAvailable : styles.stokEmpty}>
+                          {obat.stok}
+                        </span>
+                      </td>
+                      <td>{lokasi ? lokasi.nama_lokasi : '-'}</td>
+                      <td>{obat.keterangan || '-'}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => handleEdit(obat)}
+                            className={styles.btnEdit}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(obat.id, obat.nama_obat)}
+                            disabled={deleting === obat.id}
+                            className={styles.btnDelete}
+                          >
+                            {deleting === obat.id ? 'Menghapus...' : 'Hapus'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

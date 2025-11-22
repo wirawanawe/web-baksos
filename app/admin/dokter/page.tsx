@@ -12,6 +12,15 @@ interface Dokter {
   no_sip: string | null;
   no_telp: string | null;
   email: string | null;
+  lokasi_id: number | null;
+  aktif: string;
+}
+
+interface Lokasi {
+  id: number;
+  nama_lokasi: string;
+  alamat: string | null;
+  keterangan: string | null;
   aktif: string;
 }
 
@@ -37,8 +46,12 @@ export default function DokterPage() {
     no_sip: '',
     no_telp: '',
     email: '',
+    lokasi_id: '',
     aktif: 'Y',
   });
+  
+  const [lokasiList, setLokasiList] = useState<Lokasi[]>([]);
+  const [fetchingLokasi, setFetchingLokasi] = useState(false);
 
   useEffect(() => {
     const role = localStorage.getItem('user_role');
@@ -46,6 +59,7 @@ export default function DokterPage() {
       router.push('/login');
     } else {
       fetchDokter();
+      fetchLokasi();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -55,13 +69,26 @@ export default function DokterPage() {
     try {
       fetchingRef.current = true;
       setFetching(true);
+      
+      // Ambil lokasi_id dari localStorage
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
       const response = await fetch('/api/dokter');
       const result = await response.json();
       if (result.success && result.data) {
         // Remove duplicates based on id
-        const uniqueDokter = result.data.filter((dokter: Dokter, index: number, self: Dokter[]) => 
+        let uniqueDokter = result.data.filter((dokter: Dokter, index: number, self: Dokter[]) => 
           index === self.findIndex((d: Dokter) => d.id === dokter.id)
         );
+        
+        // Filter berdasarkan lokasi jika lokasi_id ada di localStorage
+        // Dokter tanpa lokasi (lokasi_id = null) akan muncul di semua lokasi
+        if (lokasiId) {
+          uniqueDokter = uniqueDokter.filter((dokter: Dokter) => 
+            !dokter.lokasi_id || dokter.lokasi_id.toString() === lokasiId
+          );
+        }
+        
         setDokterList(uniqueDokter);
       }
     } catch (error) {
@@ -69,6 +96,59 @@ export default function DokterPage() {
     } finally {
       setFetching(false);
       fetchingRef.current = false;
+    }
+  };
+
+  const fetchLokasi = async () => {
+    try {
+      setFetchingLokasi(true);
+      const response = await fetch('/api/lokasi?aktif=true');
+      const result = await response.json();
+      if (result.success && result.data) {
+        setLokasiList(result.data || []);
+      } else if (result.message && result.message.includes('does not exist')) {
+        // Auto-create table if it doesn't exist
+        try {
+          const setupResponse = await fetch('/api/lokasi/setup', {
+            method: 'POST',
+          });
+          const setupResult = await setupResponse.json();
+          if (setupResult.success) {
+            // Retry fetch
+            const retryResponse = await fetch('/api/lokasi?aktif=true');
+            const retryResult = await retryResponse.json();
+            if (retryResult.success && retryResult.data) {
+              setLokasiList(retryResult.data || []);
+            }
+          }
+        } catch (setupError) {
+          console.error('Error setting up lokasi table:', setupError);
+        }
+      }
+    } catch (error: any) {
+      if (error.message && error.message.includes('does not exist')) {
+        // Auto-create table if it doesn't exist
+        try {
+          const setupResponse = await fetch('/api/lokasi/setup', {
+            method: 'POST',
+          });
+          const setupResult = await setupResponse.json();
+          if (setupResult.success) {
+            // Retry fetch
+            const retryResponse = await fetch('/api/lokasi?aktif=true');
+            const retryResult = await retryResponse.json();
+            if (retryResult.success && retryResult.data) {
+              setLokasiList(retryResult.data || []);
+            }
+          }
+        } catch (setupError) {
+          console.error('Error setting up lokasi table:', setupError);
+        }
+      } else {
+        console.error('Error fetching lokasi:', error);
+      }
+    } finally {
+      setFetchingLokasi(false);
     }
   };
 
@@ -83,8 +163,11 @@ export default function DokterPage() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/dokter', {
-        method: 'POST',
+      const url = editingDokter ? `/api/dokter/${editingDokter.id}` : '/api/dokter';
+      const method = editingDokter ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -94,6 +177,7 @@ export default function DokterPage() {
           no_sip: formData.no_sip || null,
           no_telp: formData.no_telp || null,
           email: formData.email || null,
+          lokasi_id: formData.lokasi_id || null,
           aktif: formData.aktif,
         }),
       });
@@ -101,13 +185,14 @@ export default function DokterPage() {
       const result = await response.json();
 
       if (result.success) {
-        setMessage({ type: 'success', text: 'Data dokter berhasil ditambahkan!' });
+        setMessage({ type: 'success', text: editingDokter ? 'Data dokter berhasil diupdate!' : 'Data dokter berhasil ditambahkan!' });
         setFormData({
           nama_dokter: '',
           spesialisasi: '',
           no_sip: '',
           no_telp: '',
           email: '',
+          lokasi_id: '',
           aktif: 'Y',
         });
         setShowForm(false);
@@ -132,6 +217,7 @@ export default function DokterPage() {
       no_sip: dokter.no_sip || '',
       no_telp: dokter.no_telp || '',
       email: dokter.email || '',
+      lokasi_id: dokter.lokasi_id ? dokter.lokasi_id.toString() : '',
       aktif: dokter.aktif,
     });
     setShowForm(true);
@@ -222,8 +308,14 @@ export default function DokterPage() {
     setMessage(null);
 
     try {
+      // Ambil lokasi_id dari localStorage
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
       const formData = new FormData();
       formData.append('file', importFile);
+      if (lokasiId) {
+        formData.append('lokasi_id', lokasiId);
+      }
 
       const response = await fetch('/api/dokter/import', {
         method: 'POST',
@@ -352,6 +444,7 @@ export default function DokterPage() {
                 no_sip: '',
                 no_telp: '',
                 email: '',
+                lokasi_id: '',
                 aktif: 'Y',
               });
             }}
@@ -492,6 +585,24 @@ export default function DokterPage() {
             </div>
 
             <div className={styles.formGroup}>
+              <label htmlFor="lokasi_id">Lokasi Baksos</label>
+              <select
+                id="lokasi_id"
+                name="lokasi_id"
+                value={formData.lokasi_id}
+                onChange={handleChange}
+                className={styles.input}
+              >
+                <option value="">-- Pilih Lokasi --</option>
+                {lokasiList.map((lokasi) => (
+                  <option key={lokasi.id} value={lokasi.id}>
+                    {lokasi.nama_lokasi}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
               <label htmlFor="aktif">Status</label>
               <select
                 id="aktif"
@@ -535,43 +646,51 @@ export default function DokterPage() {
                   <th>No. SIP</th>
                   <th>No. Telepon</th>
                   <th>Email</th>
+                  <th>Lokasi</th>
                   <th>Status</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {dokterList.map((dokter, index) => (
-                  <tr key={dokter.id}>
-                    <td>{index + 1}</td>
-                    <td>{dokter.nama_dokter}</td>
-                    <td>{dokter.spesialisasi || '-'}</td>
-                    <td>{dokter.no_sip || '-'}</td>
-                    <td>{dokter.no_telp || '-'}</td>
-                    <td>{dokter.email || '-'}</td>
-                    <td>
-                      <span className={dokter.aktif === 'Y' ? styles.statusActive : styles.statusInactive}>
-                        {dokter.aktif === 'Y' ? 'Aktif' : 'Tidak Aktif'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={() => handleEdit(dokter)}
-                        className={styles.btnEdit}
-                      >
-                        Edit
-                      </button>
-                        <button
-                          onClick={() => handleDelete(dokter.id, dokter.nama_dokter)}
-                          disabled={deleting === dokter.id}
-                          className={styles.btnDelete}
-                        >
-                          {deleting === dokter.id ? 'Menghapus...' : 'Hapus'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {dokterList.map((dokter, index) => {
+                  const lokasi = dokter.lokasi_id 
+                    ? lokasiList.find(l => l.id === dokter.lokasi_id) 
+                    : null;
+                  
+                  return (
+                    <tr key={dokter.id}>
+                      <td>{index + 1}</td>
+                      <td>{dokter.nama_dokter}</td>
+                      <td>{dokter.spesialisasi || '-'}</td>
+                      <td>{dokter.no_sip || '-'}</td>
+                      <td>{dokter.no_telp || '-'}</td>
+                      <td>{dokter.email || '-'}</td>
+                      <td>{lokasi ? lokasi.nama_lokasi : '-'}</td>
+                      <td>
+                        <span className={dokter.aktif === 'Y' ? styles.statusActive : styles.statusInactive}>
+                          {dokter.aktif === 'Y' ? 'Aktif' : 'Tidak Aktif'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => handleEdit(dokter)}
+                            className={styles.btnEdit}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(dokter.id, dokter.nama_dokter)}
+                            disabled={deleting === dokter.id}
+                            className={styles.btnDelete}
+                          >
+                            {deleting === dokter.id ? 'Menghapus...' : 'Hapus'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

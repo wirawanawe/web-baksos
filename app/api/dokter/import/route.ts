@@ -8,6 +8,8 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const lokasiIdParam = formData.get('lokasi_id') as string | null;
+    const lokasiId = lokasiIdParam ? parseInt(lokasiIdParam) : null;
 
     if (!file) {
       return NextResponse.json(
@@ -71,6 +73,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check and migrate if lokasi_id column doesn't exist
+    let lokasiIdColumnExists = false;
+    try {
+      const [columns] = await pool.execute(
+        "SHOW COLUMNS FROM dokter LIKE 'lokasi_id'"
+      ) as any[];
+      
+      lokasiIdColumnExists = columns.length > 0;
+      
+      if (!lokasiIdColumnExists && lokasiId) {
+        // Ensure lokasi table exists first
+        const [lokasiTables] = await pool.execute(
+          "SHOW TABLES LIKE 'lokasi'"
+        ) as any[];
+        
+        if (lokasiTables.length === 0) {
+          await pool.execute(`
+            CREATE TABLE IF NOT EXISTS lokasi (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              nama_lokasi VARCHAR(255) NOT NULL,
+              alamat TEXT,
+              keterangan TEXT,
+              aktif ENUM('Y', 'N') DEFAULT 'Y',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_nama_lokasi (nama_lokasi),
+              INDEX idx_aktif (aktif)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+          `);
+        }
+        
+        await pool.execute(`
+          ALTER TABLE dokter 
+          ADD COLUMN lokasi_id INT AFTER email
+        `);
+        
+        try {
+          await pool.execute(`
+            ALTER TABLE dokter 
+            ADD INDEX idx_lokasi_id (lokasi_id)
+          `);
+        } catch (idxError: any) {
+          console.log('Index note:', idxError.message);
+        }
+        
+        try {
+          await pool.execute(`
+            ALTER TABLE dokter 
+            ADD CONSTRAINT fk_dokter_lokasi 
+            FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL
+          `);
+        } catch (fkError: any) {
+          console.log('Foreign key constraint note:', fkError.message);
+        }
+        
+        lokasiIdColumnExists = true;
+      }
+    } catch (migError: any) {
+      console.error('Migration check error (continuing anyway):', migError.message);
+    }
+
     // Proses data (mulai dari baris kedua)
     const dokterData: Array<{
       nama_dokter: string;
@@ -78,6 +141,7 @@ export async function POST(request: NextRequest) {
       no_sip: string | null;
       no_telp: string | null;
       email: string | null;
+      lokasi_id: number | null;
       aktif: string;
     }> = [];
 
@@ -167,6 +231,7 @@ export async function POST(request: NextRequest) {
         no_sip: noSip,
         no_telp: noTelp,
         email: email,
+        lokasi_id: lokasiId,
         aktif: aktif,
       });
     }
@@ -193,11 +258,26 @@ export async function POST(request: NextRequest) {
       await connection.beginTransaction();
 
       for (const dokter of dokterData) {
-        // Cek apakah sudah ada di database
-        const [existing] = await connection.execute(
-          'SELECT id FROM dokter WHERE LOWER(nama_dokter) = LOWER(?)',
-          [dokter.nama_dokter]
-        ) as any[];
+        // Cek apakah sudah ada di database dengan nama dan lokasi yang sama
+        // Data dokter yang sama bisa ada di lokasi yang berbeda
+        let duplicateQuery: string;
+        let duplicateParams: any[];
+        
+        if (lokasiIdColumnExists && dokter.lokasi_id) {
+          // Cek berdasarkan nama_dokter DAN lokasi_id
+          duplicateQuery = 'SELECT id FROM dokter WHERE LOWER(nama_dokter) = LOWER(?) AND lokasi_id = ?';
+          duplicateParams = [dokter.nama_dokter, dokter.lokasi_id];
+        } else if (lokasiIdColumnExists && !dokter.lokasi_id) {
+          // Jika lokasi_id null, cek hanya berdasarkan nama_dokter dengan lokasi_id null
+          duplicateQuery = 'SELECT id FROM dokter WHERE LOWER(nama_dokter) = LOWER(?) AND (lokasi_id IS NULL OR lokasi_id = 0)';
+          duplicateParams = [dokter.nama_dokter];
+        } else {
+          // Fallback: cek hanya berdasarkan nama_dokter (jika kolom lokasi_id belum ada)
+          duplicateQuery = 'SELECT id FROM dokter WHERE LOWER(nama_dokter) = LOWER(?)';
+          duplicateParams = [dokter.nama_dokter];
+        }
+        
+        const [existing] = await connection.execute(duplicateQuery, duplicateParams) as any[];
 
         if (existing && existing.length > 0) {
           duplicateCount++;
@@ -206,10 +286,18 @@ export async function POST(request: NextRequest) {
         }
 
         // Insert data baru
-        await connection.execute(
-          'INSERT INTO dokter (nama_dokter, spesialisasi, no_sip, no_telp, email, aktif) VALUES (?, ?, ?, ?, ?, ?)',
-          [dokter.nama_dokter, dokter.spesialisasi, dokter.no_sip, dokter.no_telp, dokter.email, dokter.aktif]
-        );
+        let insertQuery: string;
+        let insertParams: any[];
+        
+        if (lokasiIdColumnExists) {
+          insertQuery = 'INSERT INTO dokter (nama_dokter, spesialisasi, no_sip, no_telp, email, lokasi_id, aktif) VALUES (?, ?, ?, ?, ?, ?, ?)';
+          insertParams = [dokter.nama_dokter, dokter.spesialisasi, dokter.no_sip, dokter.no_telp, dokter.email, dokter.lokasi_id, dokter.aktif];
+        } else {
+          insertQuery = 'INSERT INTO dokter (nama_dokter, spesialisasi, no_sip, no_telp, email, aktif) VALUES (?, ?, ?, ?, ?, ?)';
+          insertParams = [dokter.nama_dokter, dokter.spesialisasi, dokter.no_sip, dokter.no_telp, dokter.email, dokter.aktif];
+        }
+        
+        await connection.execute(insertQuery, insertParams);
         successCount++;
       }
 

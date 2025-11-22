@@ -84,13 +84,20 @@ export default function FarmasiPage() {
     try {
       setFetching(true);
       const tanggalPraktik = localStorage.getItem('tanggal_praktik');
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
       if (!tanggalPraktik) {
         setMessage({ type: 'error', text: 'Tanggal Praktik tidak ditemukan. Silakan login ulang.' });
         return;
       }
       
-      // Filter berdasarkan tanggal praktik (semua pasien di tanggal tersebut)
-      const response = await fetch(`/api/patients?status=dokter&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`);
+      // Filter berdasarkan tanggal praktik dan lokasi
+      let url = `/api/patients?status=dokter&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`;
+      if (lokasiId) {
+        url += `&lokasi_id=${lokasiId}`;
+      }
+      
+      const response = await fetch(url);
       const result = await response.json();
       if (result.success) {
         setPatients(result.data || []);
@@ -105,7 +112,16 @@ export default function FarmasiPage() {
 
   const fetchObat = async () => {
     try {
-      const response = await fetch('/api/obat', {
+      // Ambil lokasi_id dari localStorage untuk filter
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
+      // Build URL dengan filter lokasi jika ada
+      let url = '/api/obat';
+      if (lokasiId) {
+        url += `?lokasi_id=${lokasiId}`;
+      }
+      
+      const response = await fetch(url, {
         cache: 'no-store',
       });
       const result = await response.json();

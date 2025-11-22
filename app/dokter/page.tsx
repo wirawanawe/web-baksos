@@ -75,99 +75,25 @@ export default function DokterPage() {
     try {
       setFetching(true);
       const tanggalPraktik = localStorage.getItem('tanggal_praktik');
-      const userName = localStorage.getItem('user_name'); // Nama dokter yang login
-      if (!tanggalPraktik || !userName) {
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
+      if (!tanggalPraktik) {
         setMessage({ type: 'error', text: 'Data login tidak lengkap. Silakan login ulang.' });
         return;
       }
       
-      // Debug: log untuk melihat parameter yang dikirim
-      console.log('Fetching patients:', { tanggalPraktik, userName });
-      
-      // Dokter melihat pasien yang didaftarkan untuk dirinya sendiri di tanggal praktik tersebut
-      // Ambil semua pasien (tanpa filter status), lalu filter di client untuk status 'perawat' atau 'pendaftaran'
-      const url = `/api/patients?startDate=${tanggalPraktik}&endDate=${tanggalPraktik}&dokter_pemeriksa=${encodeURIComponent(userName)}`;
-      console.log('API URL:', url);
+      // Dokter melihat pasien dengan status 'perawat' (sudah diperiksa perawat)
+      // Filter berdasarkan lokasi yang dipilih saat login
+      let url = `/api/patients?status=perawat&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`;
+      if (lokasiId) {
+        url += `&lokasi_id=${lokasiId}`;
+      }
       
       const response = await fetch(url);
       const result = await response.json();
       
-      console.log('API Response:', result);
-      
       if (result.success) {
-        // Filter di client side untuk hanya menampilkan pasien dengan status 'perawat' (sudah diperiksa perawat)
-        // atau 'pendaftaran' (baru didaftarkan, belum diperiksa perawat)
-        const filtered = (result.data || []).filter((p: Patient) => 
-          p.status === 'perawat' || p.status === 'pendaftaran'
-        );
-        
-        console.log('Total patients found:', result.data?.length || 0);
-        console.log('Filtered patients (perawat or pendaftaran):', filtered.length);
-        
-        // Debug: tampilkan semua pasien yang ditemukan untuk melihat dokter_pemeriksa mereka
-        if (result.data && result.data.length > 0) {
-          console.log('All patients found:', result.data.map((p: any) => ({ 
-            id: p.id, 
-            nama: p.nama, 
-            dokter_pemeriksa: p.dokter_pemeriksa,
-            status: p.status 
-          })));
-        }
-        
-        setPatients(filtered);
-        
-        // Jika tidak ada pasien, tampilkan pesan yang lebih informatif
-        if (!result.data || result.data.length === 0) {
-          console.log('No patients found. Possible reasons:');
-          console.log('- Status is not "perawat" (patient needs to be examined by nurse first)');
-          console.log('- Date mismatch (tanggal_pemeriksaan:', tanggalPraktik, ')');
-          console.log('- Doctor name mismatch (searching for:', userName, ')');
-          
-          // Coba fetch tanpa filter dokter untuk melihat semua pasien di tanggal tersebut
-          const allPatientsUrl = `/api/patients?status=perawat&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`;
-          console.log('Fetching all patients on this date for debugging:', allPatientsUrl);
-          const allResponse = await fetch(allPatientsUrl);
-          const allResult = await allResponse.json();
-          if (allResult.success && allResult.data && allResult.data.length > 0) {
-            console.log('All patients on this date with status "perawat":', allResult.data.map((p: any) => ({ 
-              id: p.id, 
-              nama: p.nama, 
-              dokter_pemeriksa: p.dokter_pemeriksa,
-              status: p.status,
-              tanggal_pemeriksaan: p.tanggal_pemeriksaan
-            })));
-            
-            // Cek apakah ada pasien dengan nama dokter yang mirip
-            const cleanSearchName = userName.replace(/^Dr\.\s*/i, '').replace(/,\s*Sp\.[A-Z]+$/i, '').trim();
-            const similarPatients = allResult.data.filter((p: any) => {
-              const dbDokterName = (p.dokter_pemeriksa || '').trim();
-              return dbDokterName.includes(cleanSearchName) || cleanSearchName.includes(dbDokterName);
-            });
-            if (similarPatients.length > 0) {
-              console.log('Found patients with similar doctor name:', similarPatients.map((p: any) => ({ 
-                id: p.id, 
-                nama: p.nama, 
-                dokter_pemeriksa: p.dokter_pemeriksa,
-                status: p.status
-              })));
-            }
-          } else {
-            console.log('No patients found with status "perawat" on this date');
-            
-            // Coba cari pasien dengan status 'pendaftaran' untuk debugging
-            const pendaftaranUrl = `/api/patients?status=pendaftaran&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`;
-            const pendaftaranResponse = await fetch(pendaftaranUrl);
-            const pendaftaranResult = await pendaftaranResponse.json();
-            if (pendaftaranResult.success && pendaftaranResult.data && pendaftaranResult.data.length > 0) {
-              console.log('Found patients with status "pendaftaran" (not yet examined by nurse):', pendaftaranResult.data.map((p: any) => ({ 
-                id: p.id, 
-                nama: p.nama, 
-                dokter_pemeriksa: p.dokter_pemeriksa,
-                status: p.status
-              })));
-            }
-          }
-        }
+        setPatients(result.data || []);
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -179,7 +105,16 @@ export default function DokterPage() {
 
   const fetchObat = async () => {
     try {
-      const response = await fetch('/api/obat', {
+      // Ambil lokasi_id dari localStorage untuk filter
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
+      // Build URL dengan filter lokasi jika ada
+      let url = '/api/obat';
+      if (lokasiId) {
+        url += `?lokasi_id=${lokasiId}`;
+      }
+      
+      const response = await fetch(url, {
         cache: 'no-store', // Prevent caching
       });
       
@@ -625,15 +560,15 @@ export default function DokterPage() {
                           ⚠ Stok {selectedObat?.nama_obat} sudah habis. Obat ini tidak bisa digunakan.
                         </div>
                       )}
-                      <div className={styles.resepForm}>
-                        <div className={styles.formGroup}>
-                          <label>Nama Obat</label>
-                          <select
-                            value={item.obat_id}
-                            onChange={(e) => handleResepChange(index, 'obat_id', parseInt(e.target.value))}
-                            className={styles.input}
-                            disabled={obatList.length === 0}
-                          >
+                    <div className={styles.resepForm}>
+                      <div className={styles.formGroup}>
+                        <label>Nama Obat</label>
+                        <select
+                          value={item.obat_id}
+                          onChange={(e) => handleResepChange(index, 'obat_id', parseInt(e.target.value))}
+                          className={styles.input}
+                          disabled={obatList.length === 0}
+                        >
                           <option value="0">
                             {obatList.length === 0 
                               ? 'Belum ada data obat. Silakan tambahkan di halaman Data Obat.' 

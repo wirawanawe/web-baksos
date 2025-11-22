@@ -44,16 +44,19 @@ CREATE TABLE IF NOT EXISTS pemeriksaan (
   terapi TEXT,
   resep TEXT,
   dokter_pemeriksa VARCHAR(255),
+  lokasi_id INT,
   -- Status alur
   status ENUM('pendaftaran', 'perawat', 'dokter', 'farmasi', 'selesai') DEFAULT 'pendaftaran',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (pasien_id) REFERENCES pasien(id) ON DELETE CASCADE,
+  FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL,
   INDEX idx_pasien_id (pasien_id),
   INDEX idx_tanggal_pemeriksaan (tanggal_pemeriksaan),
   INDEX idx_status (status),
   INDEX idx_created_at (created_at),
-  INDEX idx_dokter_pemeriksa (dokter_pemeriksa)
+  INDEX idx_dokter_pemeriksa (dokter_pemeriksa),
+  INDEX idx_lokasi_id (lokasi_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabel untuk data obat
@@ -63,9 +66,12 @@ CREATE TABLE IF NOT EXISTS obat (
   satuan VARCHAR(50) NOT NULL,
   stok INT DEFAULT 0,
   keterangan TEXT,
+  lokasi_id INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_nama_obat (nama_obat)
+  FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL,
+  INDEX idx_nama_obat (nama_obat),
+  INDEX idx_lokasi_id (lokasi_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabel untuk resep pasien (detail obat yang diberikan)
@@ -89,10 +95,26 @@ CREATE TABLE IF NOT EXISTS dokter (
   no_sip VARCHAR(50),
   no_telp VARCHAR(20),
   email VARCHAR(255),
+  lokasi_id INT,
   aktif ENUM('Y', 'N') DEFAULT 'Y',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL,
   INDEX idx_nama_dokter (nama_dokter),
+  INDEX idx_aktif (aktif),
+  INDEX idx_lokasi_id (lokasi_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabel untuk lokasi Baksos
+CREATE TABLE IF NOT EXISTS lokasi (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nama_lokasi VARCHAR(255) NOT NULL,
+  alamat TEXT,
+  keterangan TEXT,
+  aktif ENUM('Y', 'N') DEFAULT 'Y',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_nama_lokasi (nama_lokasi),
   INDEX idx_aktif (aktif)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -140,6 +140,7 @@ export async function PUT(
       terapi,
       resep,
       dokter_pemeriksa,
+      lokasi_id,
       status,
     } = data;
 
@@ -223,6 +224,10 @@ export async function PUT(
       updates.push('dokter_pemeriksa = ?');
       values.push(dokter_pemeriksa || null);
     }
+    if (lokasi_id !== undefined) {
+      updates.push('lokasi_id = ?');
+      values.push(lokasi_id || null);
+    }
     if (status !== undefined) {
       updates.push('status = ?');
       values.push(status);
@@ -302,6 +307,7 @@ export async function GET(
         pm.terapi,
         pm.resep,
         pm.dokter_pemeriksa,
+        pm.lokasi_id,
         pm.status,
         pm.created_at,
         pm.updated_at

@@ -25,14 +25,9 @@ export default function AdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
-  const [fetchingDokter, setFetchingDokter] = useState(false);
   const [fetchingPatients, setFetchingPatients] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [dokterList, setDokterList] = useState<{ id: number; nama_dokter: string }[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [editingDokter, setEditingDokter] = useState<{ patientId: number; currentDokter: string | null } | null>(null);
-  const [newDokter, setNewDokter] = useState('');
-  const [updatingDokter, setUpdatingDokter] = useState(false);
   
   const [formData, setFormData] = useState({
     nama: '',
@@ -41,7 +36,6 @@ export default function AdminPage() {
     jenis_kelamin: '',
     tanggal_lahir: '',
     alamat: '',
-    dokter_pemeriksa: '',
   });
 
   // Fungsi untuk menghitung usia dari tanggal lahir
@@ -70,41 +64,36 @@ export default function AdminPage() {
         router.push('/login');
         return;
       }
-      fetchDokter();
       fetchPatients();
     }
   }, [router]);
 
-  const fetchDokter = async () => {
-    try {
-      setFetchingDokter(true);
-      const response = await fetch('/api/dokter?aktif=true');
-      const result = await response.json();
-      if (result.success) {
-        setDokterList(result.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching dokter:', error);
-    } finally {
-      setFetchingDokter(false);
-    }
-  };
-
   const fetchPatients = async () => {
     try {
       setFetchingPatients(true);
-      const tanggalPraktik = localStorage.getItem('tanggal_praktik');
-      if (!tanggalPraktik) {
-        return;
+      const lokasiId = localStorage.getItem('lokasi_id');
+      
+      // Fetch patients filtered by lokasi_id
+      let url = '/api/patients';
+      if (lokasiId) {
+        url += `?lokasi_id=${lokasiId}`;
       }
       
-      const response = await fetch(`/api/patients?startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`);
+      const response = await fetch(url);
       const result = await response.json();
+      
       if (result.success) {
-        setPatients(result.data || []);
+        const patientsData = result.data || [];
+        // If tanggalPraktik exists, optionally filter by date on client side
+        // But for admin, we show all patients
+        setPatients(patientsData);
+      } else {
+        console.error('Failed to fetch patients:', result.message);
+        setMessage({ type: 'error', text: result.message || 'Gagal memuat data pasien' });
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
+      setMessage({ type: 'error', text: 'Gagal memuat data pasien' });
     } finally {
       setFetchingPatients(false);
     }
@@ -150,6 +139,14 @@ export default function AdminPage() {
       return;
     }
 
+    // Ambil lokasi_id dari localStorage (dipilih saat login)
+    const lokasiId = localStorage.getItem('lokasi_id');
+    if (!lokasiId) {
+      setMessage({ type: 'error', text: 'Lokasi Baksos belum dipilih. Silakan login ulang dan pilih lokasi.' });
+      setLoading(false);
+      return;
+    }
+
     try {
       const tanggalPraktik = localStorage.getItem('tanggal_praktik');
       const response = await fetch('/api/patients', {
@@ -159,6 +156,7 @@ export default function AdminPage() {
         },
         body: JSON.stringify({
           ...formData,
+          lokasi_id: lokasiId, // Ambil dari localStorage (dipilih saat login)
           tanggal_pemeriksaan: tanggalPraktik || null,
           status: 'pendaftaran',
         }),
@@ -168,7 +166,7 @@ export default function AdminPage() {
 
       if (result.success) {
         setMessage({ type: 'success', text: 'Data pasien berhasil didaftarkan!' });
-        // Reset form (keep dokter_pemeriksa empty so admin can select for next patient)
+        // Reset form
         setFormData({
           nama: '',
           no_ktp: '',
@@ -176,7 +174,6 @@ export default function AdminPage() {
           jenis_kelamin: '',
           tanggal_lahir: '',
           alamat: '',
-          dokter_pemeriksa: '',
         });
         // Refresh daftar pasien
         fetchPatients();
@@ -191,51 +188,6 @@ export default function AdminPage() {
     }
   };
 
-  const handleEditDokter = (patient: Patient) => {
-    if (patient.status === 'pendaftaran' || patient.status === 'perawat') {
-      setEditingDokter({ patientId: patient.id, currentDokter: patient.dokter_pemeriksa });
-      setNewDokter(patient.dokter_pemeriksa || '');
-    }
-  };
-
-  const handleCancelEditDokter = () => {
-    setEditingDokter(null);
-    setNewDokter('');
-  };
-
-  const handleUpdateDokter = async () => {
-    if (!editingDokter) return;
-
-    setUpdatingDokter(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch(`/api/patients/${editingDokter.patientId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          dokter_pemeriksa: newDokter || null,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setMessage({ type: 'success', text: 'Dokter pemeriksa berhasil diubah!' });
-        setEditingDokter(null);
-        setNewDokter('');
-        fetchPatients();
-      } else {
-        setMessage({ type: 'error', text: result.message || 'Gagal mengubah dokter pemeriksa' });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Terjadi kesalahan saat mengubah dokter pemeriksa' });
-    } finally {
-      setUpdatingDokter(false);
-    }
-  };
 
   return (
     <div className={styles.container}>
@@ -251,45 +203,6 @@ export default function AdminPage() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>PENDAFTARAN PASIEN</h2>
           <div className={styles.formGrid}>
-            <div className={styles.formGroup}>
-              <label htmlFor="dokter_pemeriksa">Dokter Praktek <span className={styles.required}>*</span></label>
-              {fetchingDokter ? (
-                <p>Memuat daftar dokter...</p>
-              ) : dokterList.length === 0 ? (
-                <div>
-                  <select
-                    id="dokter_pemeriksa"
-                    name="dokter_pemeriksa"
-                    value={formData.dokter_pemeriksa}
-                    onChange={handleChange}
-                    className={styles.input}
-                    disabled
-                  >
-                    <option value="">Belum ada dokter terdaftar</option>
-                  </select>
-                  <p className={styles.infoText}>
-                    Silakan tambahkan data dokter di halaman Admin {'>'} Data Dokter terlebih dahulu.
-                  </p>
-                </div>
-              ) : (
-                <select
-                  id="dokter_pemeriksa"
-                  name="dokter_pemeriksa"
-                  value={formData.dokter_pemeriksa}
-                onChange={handleChange}
-                required
-                className={styles.input}
-                >
-                  <option value="">Pilih Dokter Praktek</option>
-                  {dokterList.map((dokter) => (
-                    <option key={dokter.id} value={dokter.nama_dokter}>
-                      {dokter.nama_dokter}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
             <div className={styles.formGroup}>
               <label htmlFor="nama">Nama <span className={styles.required}>*</span></label>
               <input
@@ -405,7 +318,6 @@ export default function AdminPage() {
                 jenis_kelamin: '',
                 tanggal_lahir: '',
                 alamat: '',
-                dokter_pemeriksa: '',
               });
               setMessage(null);
             }}
@@ -448,7 +360,6 @@ export default function AdminPage() {
                   <th>Dokter</th>
                   <th>Status</th>
                   <th>Tanggal</th>
-                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -471,18 +382,6 @@ export default function AdminPage() {
                         ? new Date(patient.tanggal_pemeriksaan).toLocaleDateString('id-ID')
                         : new Date(patient.created_at).toLocaleDateString('id-ID')}
                     </td>
-                    <td>
-                      {(patient.status === 'pendaftaran' || patient.status === 'perawat') && (
-                        <button
-                          type="button"
-                          onClick={() => handleEditDokter(patient)}
-                          className={styles.btnEditDokter}
-                          title="Ubah Dokter Pemeriksa"
-                        >
-                          ✏️ Ubah Dokter
-                        </button>
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -490,57 +389,6 @@ export default function AdminPage() {
           </div>
         )}
       </div>
-
-      {/* Modal Edit Dokter */}
-      {editingDokter && (
-        <div className={styles.modalOverlay} onClick={handleCancelEditDokter}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.modalTitle}>Ubah Dokter Pemeriksa</h3>
-            <div className={styles.modalBody}>
-              <div className={styles.formGroup}>
-                <label htmlFor="newDokter">Dokter Pemeriksa</label>
-                {dokterList.length === 0 ? (
-                  <p className={styles.infoText}>
-                    Belum ada data dokter. Silakan tambahkan di halaman Admin {'>'} Data Dokter.
-                  </p>
-                ) : (
-                  <select
-                    id="newDokter"
-                    value={newDokter}
-                    onChange={(e) => setNewDokter(e.target.value)}
-                    className={styles.input}
-                  >
-                    <option value="">Pilih Dokter</option>
-                    {dokterList.map((dokter) => (
-                      <option key={dokter.id} value={dokter.nama_dokter}>
-                        {dokter.nama_dokter}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
-            <div className={styles.modalActions}>
-              <button
-                type="button"
-                onClick={handleCancelEditDokter}
-                className={styles.btnCancel}
-                disabled={updatingDokter}
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleUpdateDokter}
-                className={styles.btnSave}
-                disabled={updatingDokter || dokterList.length === 0}
-              >
-                {updatingDokter ? 'Menyimpan...' : 'Simpan'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className={styles.footer}>
         <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>

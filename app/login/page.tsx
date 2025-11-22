@@ -10,34 +10,62 @@ type UserRole = 'admin' | 'perawat' | 'dokter' | 'farmasi';
 interface Dokter {
   id: number;
   nama_dokter: string;
+  lokasi_id: number | null;
+}
+
+interface Lokasi {
+  id: number;
+  nama_lokasi: string;
+  aktif: string;
 }
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [fetchingDokter, setFetchingDokter] = useState(false);
+  const [fetchingLokasi, setFetchingLokasi] = useState(false);
   const [dokterList, setDokterList] = useState<Dokter[]>([]);
+  const [lokasiList, setLokasiList] = useState<Lokasi[]>([]);
   const [formData, setFormData] = useState({
     role: '' as UserRole | '',
     nama: '',
     dokter_id: '',
+    lokasi_id: '',
     tanggal_praktik: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
-    // Fetch dokter list when role is 'dokter'
-    if (formData.role === 'dokter') {
+    // Always fetch lokasi list on mount
+    fetchLokasi();
+  }, []);
+
+  useEffect(() => {
+    // Fetch dokter list when role is 'dokter' and lokasi_id is selected
+    if (formData.role === 'dokter' && formData.lokasi_id) {
       fetchDokter();
+    } else {
+      setDokterList([]);
+      setFormData(prev => ({ ...prev, dokter_id: '' }));
     }
-  }, [formData.role]);
+  }, [formData.role, formData.lokasi_id]);
 
   const fetchDokter = async () => {
+    if (!formData.lokasi_id) {
+      setDokterList([]);
+      return;
+    }
+    
     try {
       setFetchingDokter(true);
       const response = await fetch('/api/dokter?aktif=true');
       const result = await response.json();
       if (result.success) {
-        setDokterList(result.data || []);
+        // Filter dokter berdasarkan lokasi_id yang dipilih
+        // Dokter tanpa lokasi (lokasi_id = null) akan muncul di semua lokasi
+        const filteredDokter = (result.data || []).filter((dokter: Dokter) => 
+          !dokter.lokasi_id || dokter.lokasi_id.toString() === formData.lokasi_id
+        );
+        setDokterList(filteredDokter);
       }
     } catch (error) {
       console.error('Error fetching dokter:', error);
@@ -46,9 +74,66 @@ export default function LoginPage() {
     }
   };
 
+  const fetchLokasi = async () => {
+    try {
+      setFetchingLokasi(true);
+      const response = await fetch('/api/lokasi?aktif=true');
+      const result = await response.json();
+      if (result.success) {
+        setLokasiList(result.data || []);
+      } else if (result.message && result.message.includes('does not exist')) {
+        // Auto-create table if it doesn't exist
+        try {
+          const setupResponse = await fetch('/api/lokasi/setup', {
+            method: 'POST',
+          });
+          const setupResult = await setupResponse.json();
+          if (setupResult.success) {
+            // Retry fetch
+            const retryResponse = await fetch('/api/lokasi?aktif=true');
+            const retryResult = await retryResponse.json();
+            if (retryResult.success && retryResult.data) {
+              setLokasiList(retryResult.data || []);
+            }
+          }
+        } catch (setupError) {
+          console.error('Error setting up lokasi table:', setupError);
+        }
+      }
+    } catch (error: any) {
+      if (error.message && error.message.includes('does not exist')) {
+        // Auto-create table if it doesn't exist
+        try {
+          const setupResponse = await fetch('/api/lokasi/setup', {
+            method: 'POST',
+          });
+          const setupResult = await setupResponse.json();
+          if (setupResult.success) {
+            // Retry fetch
+            const retryResponse = await fetch('/api/lokasi?aktif=true');
+            const retryResult = await retryResponse.json();
+            if (retryResult.success && retryResult.data) {
+              setLokasiList(retryResult.data || []);
+            }
+          }
+        } catch (setupError) {
+          console.error('Error setting up lokasi table:', setupError);
+        }
+      } else {
+        console.error('Error fetching lokasi:', error);
+      }
+    } finally {
+      setFetchingLokasi(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (name === 'role') {
+    if (name === 'lokasi_id') {
+      // Reset role dan dokter_id ketika lokasi berubah
+      setFormData(prev => ({ ...prev, lokasi_id: value, role: '' as UserRole, nama: '', dokter_id: '' }));
+      setDokterList([]);
+    } else if (name === 'role') {
       setFormData(prev => ({ ...prev, role: value as UserRole, nama: '', dokter_id: '' }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -58,9 +143,23 @@ export default function LoginPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validasi: Lokasi harus dipilih dulu
+    if (!formData.lokasi_id) {
+      alert('Pilih Lokasi Baksos terlebih dahulu!');
+      return;
+    }
+
+    // Validasi: Role harus dipilih
     if (!formData.role) {
       alert('Pilih role terlebih dahulu!');
       return;
+    }
+
+    // Simpan lokasi ke localStorage untuk semua role
+    localStorage.setItem('lokasi_id', formData.lokasi_id);
+    const selectedLokasi = lokasiList.find(l => l.id.toString() === formData.lokasi_id);
+    if (selectedLokasi) {
+      localStorage.setItem('lokasi_nama', selectedLokasi.nama_lokasi);
     }
 
     if (formData.role === 'dokter') {
@@ -68,11 +167,16 @@ export default function LoginPage() {
         alert('Pilih dokter terlebih dahulu!');
         return;
       }
-      // Get dokter name from list
+      // Get dokter name and lokasi_id from list
       const selectedDokter = dokterList.find(d => d.id.toString() === formData.dokter_id);
       if (selectedDokter) {
         localStorage.setItem('user_name', selectedDokter.nama_dokter);
         localStorage.setItem('dokter_id', formData.dokter_id);
+        if (selectedDokter.lokasi_id) {
+          localStorage.setItem('dokter_lokasi_id', selectedDokter.lokasi_id.toString());
+        } else {
+          localStorage.removeItem('dokter_lokasi_id');
+        }
       }
     } else {
       if (!formData.nama.trim()) {
@@ -117,27 +221,73 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.formGroup}>
-              <label htmlFor="role">
-                Pilih Role <span className={styles.required}>*</span>
+              <label htmlFor="lokasi_id">
+                Lokasi Baksos <span className={styles.required}>*</span>
               </label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                required
-                className={styles.input}
-                autoFocus
-              >
-                <option value="">Pilih Role</option>
-                <option value="admin">Admin Pendaftaran</option>
-                <option value="perawat">Perawat</option>
-                <option value="dokter">Dokter</option>
-                <option value="farmasi">Farmasi</option>
-              </select>
+              {fetchingLokasi ? (
+                <p>Memuat daftar lokasi...</p>
+              ) : lokasiList.length === 0 ? (
+                <div>
+                  <select
+                    id="lokasi_id"
+                    name="lokasi_id"
+                    value={formData.lokasi_id}
+                    onChange={handleChange}
+                    className={styles.input}
+                    disabled
+                    required
+                    autoFocus
+                  >
+                    <option value="">Belum ada lokasi terdaftar</option>
+                  </select>
+                  <p className={styles.infoText}>
+                    Silakan tambahkan data lokasi di halaman Admin {'>'} Data Lokasi terlebih dahulu.
+                  </p>
+                </div>
+              ) : (
+                <select
+                  id="lokasi_id"
+                  name="lokasi_id"
+                  value={formData.lokasi_id}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                  autoFocus
+                >
+                  <option value="">Pilih Lokasi Baksos</option>
+                  {lokasiList.map((lokasi) => (
+                    <option key={lokasi.id} value={lokasi.id}>
+                      {lokasi.nama_lokasi}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
-            {formData.role === 'dokter' ? (
+            {formData.lokasi_id && (
+              <div className={styles.formGroup}>
+                <label htmlFor="role">
+                  Pilih Role <span className={styles.required}>*</span>
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                  disabled={!formData.lokasi_id}
+                >
+                  <option value="">Pilih Role</option>
+                  <option value="admin">Admin Pendaftaran</option>
+                  <option value="perawat">Perawat</option>
+                  <option value="dokter">Dokter</option>
+                  <option value="farmasi">Farmasi</option>
+                </select>
+              </div>
+            )}
+
+            {formData.role === 'dokter' && formData.lokasi_id ? (
               <div className={styles.formGroup}>
                 <label htmlFor="dokter_id">
                   Dokter Pemeriksa <span className={styles.required}>*</span>
@@ -153,11 +303,12 @@ export default function LoginPage() {
                       onChange={handleChange}
                       className={styles.input}
                       disabled
+                      required
                     >
-                      <option value="">Belum ada dokter terdaftar</option>
+                      <option value="">Belum ada dokter di lokasi ini</option>
                     </select>
                     <p className={styles.infoText}>
-                      Silakan login sebagai Admin untuk menambahkan data dokter terlebih dahulu.
+                      Tidak ada dokter yang terdaftar di lokasi ini. Silakan login sebagai Admin untuk menambahkan dokter di lokasi ini.
                     </p>
                   </div>
                 ) : (
@@ -178,7 +329,7 @@ export default function LoginPage() {
                   </select>
                 )}
               </div>
-            ) : (
+            ) : formData.role && formData.role !== 'dokter' && (
               <div className={styles.formGroup}>
                 <label htmlFor="nama">
                   Nama <span className={styles.required}>*</span>
@@ -196,25 +347,27 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className={styles.formGroup}>
-              <label htmlFor="tanggal_praktik">
-                Tanggal Praktik <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="date"
-                id="tanggal_praktik"
-                name="tanggal_praktik"
-                value={formData.tanggal_praktik}
-                onChange={handleChange}
-                required
-                className={styles.input}
-              />
-            </div>
+            {formData.lokasi_id && formData.role && (
+              <div className={styles.formGroup}>
+                <label htmlFor="tanggal_praktik">
+                  Tanggal Praktik <span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="date"
+                  id="tanggal_praktik"
+                  name="tanggal_praktik"
+                  value={formData.tanggal_praktik}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+              </div>
+            )}
 
             <div className={styles.formActions}>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !formData.lokasi_id || !formData.role || (formData.role === 'dokter' && !formData.dokter_id)}
                 className={styles.btnPrimary}
               >
                 {loading ? 'Memproses...' : 'Masuk'}
@@ -229,4 +382,3 @@ export default function LoginPage() {
     </>
   );
 }
-

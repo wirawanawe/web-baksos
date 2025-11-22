@@ -42,6 +42,8 @@ export default function Header() {
     localStorage.removeItem('tanggal_pemeriksaan');
     localStorage.removeItem('tanggal_praktik');
     localStorage.removeItem('dokter_id');
+    localStorage.removeItem('lokasi_id');
+    localStorage.removeItem('lokasi_nama');
     router.push('/login');
   };
 

@@ -89,18 +89,102 @@ export async function POST(request: NextRequest) {
         terapi TEXT,
         resep TEXT,
         dokter_pemeriksa VARCHAR(255),
+        lokasi_id INT,
         status ENUM('pendaftaran', 'perawat', 'dokter', 'farmasi', 'selesai') DEFAULT 'pendaftaran',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (pasien_id) REFERENCES pasien(id) ON DELETE CASCADE,
+        FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL,
         INDEX idx_pasien_id (pasien_id),
         INDEX idx_tanggal_pemeriksaan (tanggal_pemeriksaan),
         INDEX idx_status (status),
         INDEX idx_created_at (created_at),
-        INDEX idx_dokter_pemeriksa (dokter_pemeriksa)
+        INDEX idx_dokter_pemeriksa (dokter_pemeriksa),
+        INDEX idx_lokasi_id (lokasi_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
     await pool.execute(createPemeriksaanTableQuery);
+
+    // Check if lokasi table exists, if not create it first
+    try {
+      const [lokasiTables] = await pool.execute(
+        "SHOW TABLES LIKE 'lokasi'"
+      ) as any[];
+      
+      if (lokasiTables.length === 0) {
+        // Create lokasi table first
+        const createLokasiTableQuery = `
+          CREATE TABLE IF NOT EXISTS lokasi (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nama_lokasi VARCHAR(255) NOT NULL,
+            alamat TEXT,
+            keterangan TEXT,
+            aktif ENUM('Y', 'N') DEFAULT 'Y',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_nama_lokasi (nama_lokasi),
+            INDEX idx_aktif (aktif)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `;
+        await pool.execute(createLokasiTableQuery);
+      }
+    } catch (error) {
+      console.error('Error checking/creating lokasi table:', error);
+      // Continue with other table creation
+    }
+
+    // Check if pemeriksaan table needs migration (add lokasi_id column)
+    try {
+      const [columns] = await pool.execute(
+        "SHOW COLUMNS FROM pemeriksaan LIKE 'lokasi_id'"
+      ) as any[];
+      
+      if (columns.length === 0) {
+        // Add lokasi_id column to existing pemeriksaan table
+        console.log('Adding lokasi_id column to pemeriksaan table...');
+        
+        // First create lokasi table if it doesn't exist
+        const [lokasiTables] = await pool.execute(
+          "SHOW TABLES LIKE 'lokasi'"
+        ) as any[];
+        
+        if (lokasiTables.length === 0) {
+          const createLokasiTableQuery = `
+            CREATE TABLE IF NOT EXISTS lokasi (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              nama_lokasi VARCHAR(255) NOT NULL,
+              alamat TEXT,
+              keterangan TEXT,
+              aktif ENUM('Y', 'N') DEFAULT 'Y',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_nama_lokasi (nama_lokasi),
+              INDEX idx_aktif (aktif)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          `;
+          await pool.execute(createLokasiTableQuery);
+        }
+        
+        // Add lokasi_id column
+        await pool.execute(`
+          ALTER TABLE pemeriksaan 
+          ADD COLUMN lokasi_id INT AFTER dokter_pemeriksa,
+          ADD INDEX idx_lokasi_id (lokasi_id)
+        `);
+        
+        // Add foreign key constraint
+        await pool.execute(`
+          ALTER TABLE pemeriksaan 
+          ADD CONSTRAINT fk_pemeriksaan_lokasi 
+          FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL
+        `);
+        
+        console.log('Migration completed: lokasi_id column added to pemeriksaan table');
+      }
+    } catch (error: any) {
+      console.error('Error migrating pemeriksaan table:', error);
+      // Continue even if migration fails
+    }
 
     // Create obat table
     const createObatTableQuery = `
@@ -110,12 +194,78 @@ export async function POST(request: NextRequest) {
         satuan VARCHAR(50) NOT NULL,
         stok INT DEFAULT 0,
         keterangan TEXT,
+        lokasi_id INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_nama_obat (nama_obat)
+        INDEX idx_nama_obat (nama_obat),
+        INDEX idx_lokasi_id (lokasi_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
     await pool.execute(createObatTableQuery);
+
+    // Check if obat table needs migration (add lokasi_id column)
+    try {
+      const [obatColumns] = await pool.execute(
+        "SHOW COLUMNS FROM obat LIKE 'lokasi_id'"
+      ) as any[];
+      
+      if (obatColumns.length === 0) {
+        console.log('Adding lokasi_id column to obat table...');
+        
+        // First create lokasi table if it doesn't exist
+        const [lokasiTables] = await pool.execute(
+          "SHOW TABLES LIKE 'lokasi'"
+        ) as any[];
+        
+        if (lokasiTables.length === 0) {
+          const createLokasiTableQuery = `
+            CREATE TABLE IF NOT EXISTS lokasi (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              nama_lokasi VARCHAR(255) NOT NULL,
+              alamat TEXT,
+              keterangan TEXT,
+              aktif ENUM('Y', 'N') DEFAULT 'Y',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_nama_lokasi (nama_lokasi),
+              INDEX idx_aktif (aktif)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+          `;
+          await pool.execute(createLokasiTableQuery);
+        }
+        
+        // Add lokasi_id column
+        await pool.execute(`
+          ALTER TABLE obat 
+          ADD COLUMN lokasi_id INT AFTER keterangan
+        `);
+        
+        // Add index
+        try {
+          await pool.execute(`
+            ALTER TABLE obat 
+            ADD INDEX idx_lokasi_id (lokasi_id)
+          `);
+        } catch (idxError: any) {
+          console.log('Index note:', idxError.message);
+        }
+        
+        // Add foreign key constraint
+        try {
+          await pool.execute(`
+            ALTER TABLE obat 
+            ADD CONSTRAINT fk_obat_lokasi 
+            FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL
+          `);
+        } catch (fkError: any) {
+          console.log('Foreign key constraint note:', fkError.message);
+        }
+        
+        console.log('Migration completed: lokasi_id column added to obat table');
+      }
+    } catch (migError: any) {
+      console.error('Error migrating obat table:', migError);
+    }
 
     // Check and migrate resep_detail table if needed
     try {
@@ -221,6 +371,31 @@ export async function POST(request: NextRequest) {
     await pool.execute(createResepDetailTableQuery);
 
     // Create dokter table
+    // First check if lokasi table exists, if not create it
+    try {
+      const [lokasiTables] = await pool.execute(
+        "SHOW TABLES LIKE 'lokasi'"
+      ) as any[];
+      
+      if (lokasiTables.length === 0) {
+        await pool.execute(`
+          CREATE TABLE IF NOT EXISTS lokasi (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nama_lokasi VARCHAR(255) NOT NULL,
+            alamat TEXT,
+            keterangan TEXT,
+            aktif ENUM('Y', 'N') DEFAULT 'Y',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_nama_lokasi (nama_lokasi),
+            INDEX idx_aktif (aktif)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+    } catch (lokasiError) {
+      console.error('Error checking/creating lokasi table:', lokasiError);
+    }
+
     const createDokterTableQuery = `
       CREATE TABLE IF NOT EXISTS dokter (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -229,14 +404,74 @@ export async function POST(request: NextRequest) {
         no_sip VARCHAR(50),
         no_telp VARCHAR(20),
         email VARCHAR(255),
+        lokasi_id INT,
         aktif ENUM('Y', 'N') DEFAULT 'Y',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_nama_dokter (nama_dokter),
-        INDEX idx_aktif (aktif)
+        INDEX idx_aktif (aktif),
+        INDEX idx_lokasi_id (lokasi_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
     await pool.execute(createDokterTableQuery);
+
+    // Check if dokter table needs migration (add lokasi_id column)
+    try {
+      const [columns] = await pool.execute(
+        "SHOW COLUMNS FROM dokter LIKE 'lokasi_id'"
+      ) as any[];
+      
+      if (columns.length === 0) {
+        console.log('Adding lokasi_id column to dokter table...');
+        
+        // Add lokasi_id column
+        await pool.execute(`
+          ALTER TABLE dokter 
+          ADD COLUMN lokasi_id INT AFTER email
+        `);
+        
+        // Add index
+        try {
+          await pool.execute(`
+            ALTER TABLE dokter 
+            ADD INDEX idx_lokasi_id (lokasi_id)
+          `);
+        } catch (idxError: any) {
+          console.log('Index note:', idxError.message);
+        }
+        
+        // Add foreign key constraint
+        try {
+          await pool.execute(`
+            ALTER TABLE dokter 
+            ADD CONSTRAINT fk_dokter_lokasi 
+            FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL
+          `);
+        } catch (fkError: any) {
+          console.log('Foreign key constraint note:', fkError.message);
+        }
+        
+        console.log('Migration completed: lokasi_id column added to dokter table');
+      }
+    } catch (migError: any) {
+      console.error('Error migrating dokter table:', migError);
+    }
+
+    // Create lokasi table
+    const createLokasiTableQuery = `
+      CREATE TABLE IF NOT EXISTS lokasi (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nama_lokasi VARCHAR(255) NOT NULL,
+        alamat TEXT,
+        keterangan TEXT,
+        aktif ENUM('Y', 'N') DEFAULT 'Y',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_nama_lokasi (nama_lokasi),
+        INDEX idx_aktif (aktif)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+    await pool.execute(createLokasiTableQuery);
 
     return NextResponse.json(
       { 

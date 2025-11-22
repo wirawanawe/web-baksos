@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       terapi,
       resep,
       dokter_pemeriksa,
+      lokasi_id,
       status,
     } = data;
 
@@ -152,8 +153,8 @@ export async function POST(request: NextRequest) {
         anamnesa, pemeriksaan_fisik,
         hpht, hpl, tfu, djj_anak,
         diagnosa, terapi, resep,
-        dokter_pemeriksa, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        dokter_pemeriksa, lokasi_id, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         pasienId,
         tanggal_pemeriksaan || null,
@@ -175,6 +176,7 @@ export async function POST(request: NextRequest) {
         terapi || null,
         resep || null,
         dokter_pemeriksa || null,
+        lokasi_id || null,
         status || 'pendaftaran',
       ]
     );
@@ -214,13 +216,87 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check and migrate if lokasi_id column doesn't exist
+    let lokasiIdColumnExists = false;
+    try {
+      const [columns] = await pool.execute(
+        "SHOW COLUMNS FROM pemeriksaan LIKE 'lokasi_id'"
+      ) as any[];
+      
+      lokasiIdColumnExists = columns.length > 0;
+      
+      if (!lokasiIdColumnExists) {
+        console.log('lokasi_id column not found, adding it...');
+        
+        // First ensure lokasi table exists
+        const [lokasiTables] = await pool.execute(
+          "SHOW TABLES LIKE 'lokasi'"
+        ) as any[];
+        
+        if (lokasiTables.length === 0) {
+          await pool.execute(`
+            CREATE TABLE IF NOT EXISTS lokasi (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              nama_lokasi VARCHAR(255) NOT NULL,
+              alamat TEXT,
+              keterangan TEXT,
+              aktif ENUM('Y', 'N') DEFAULT 'Y',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_nama_lokasi (nama_lokasi),
+              INDEX idx_aktif (aktif)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+          `);
+        }
+        
+        // Add lokasi_id column
+        await pool.execute(`
+          ALTER TABLE pemeriksaan 
+          ADD COLUMN lokasi_id INT AFTER dokter_pemeriksa
+        `);
+        
+        // Add index
+        try {
+          await pool.execute(`
+            ALTER TABLE pemeriksaan 
+            ADD INDEX idx_lokasi_id (lokasi_id)
+          `);
+        } catch (idxError: any) {
+          // Index might already exist
+          console.log('Index note:', idxError.message);
+        }
+        
+        // Add foreign key if lokasi table exists
+        try {
+          await pool.execute(`
+            ALTER TABLE pemeriksaan 
+            ADD CONSTRAINT fk_pemeriksaan_lokasi 
+            FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL
+          `);
+        } catch (fkError: any) {
+          // Foreign key might already exist or constraint name conflict
+          console.log('Foreign key constraint note:', fkError.message);
+        }
+        
+        lokasiIdColumnExists = true;
+        console.log('lokasi_id column added successfully');
+      }
+    } catch (migError: any) {
+      console.error('Migration check error (continuing anyway):', migError.message);
+      // Continue without lokasi_id column
+      lokasiIdColumnExists = false;
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const status = searchParams.get('status');
     const dokter_pemeriksa = searchParams.get('dokter_pemeriksa');
+    const dokter_id = searchParams.get('dokter_id');
+    const lokasi_id = searchParams.get('lokasi_id');
 
     // Query dengan JOIN antara pasien dan pemeriksaan
+    // Include lokasi_id only if column exists
     let query = `
       SELECT 
         p.id as pasien_id,
@@ -252,7 +328,7 @@ export async function GET(request: NextRequest) {
         pm.diagnosa,
         pm.terapi,
         pm.resep,
-        pm.dokter_pemeriksa,
+        pm.dokter_pemeriksa${lokasiIdColumnExists ? ',\n        pm.lokasi_id' : ''},
         pm.status,
         pm.created_at,
         pm.updated_at
@@ -287,6 +363,30 @@ export async function GET(request: NextRequest) {
       
       conditions.push('(TRIM(pm.dokter_pemeriksa) = TRIM(?) OR TRIM(pm.dokter_pemeriksa) LIKE ? OR TRIM(pm.dokter_pemeriksa) LIKE ? OR TRIM(pm.dokter_pemeriksa) LIKE ? OR TRIM(?) LIKE CONCAT("%", TRIM(pm.dokter_pemeriksa), "%"))');
       params.push(searchName, `%${cleanName}%`, `%${searchName}%`, `%${cleanName.split(' ')[0]}%`, searchName);
+    }
+
+    // Filter berdasarkan lokasi_id jika dokter_id diberikan
+    let dokterLokasiId: number | null = null;
+    if (dokter_id) {
+      try {
+        const [dokterRows] = await pool.execute(
+          'SELECT lokasi_id FROM dokter WHERE id = ?',
+          [dokter_id]
+        ) as any[];
+        
+        if (dokterRows && dokterRows.length > 0) {
+          dokterLokasiId = dokterRows[0].lokasi_id;
+        }
+      } catch (dokterError: any) {
+        console.error('Error fetching dokter lokasi_id:', dokterError);
+      }
+    }
+
+    // Filter berdasarkan lokasi_id (dari query param atau dari dokter)
+    const filterLokasiId = lokasi_id ? parseInt(lokasi_id) : dokterLokasiId;
+    if (filterLokasiId !== null && filterLokasiId !== undefined && lokasiIdColumnExists) {
+      conditions.push('pm.lokasi_id = ?');
+      params.push(filterLokasiId);
     }
 
     if (conditions.length > 0) {
