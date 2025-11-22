@@ -8,13 +8,47 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Parse request data first
+  const pemeriksaanId = params.id;
+  const data = await request.json();
+  
+  // Check and update status ENUM to include 'dibatalkan' if needed (before transaction)
+  // This is especially important if status is 'dibatalkan'
+  try {
+    const [statusColumns] = await pool.execute(
+      "SHOW COLUMNS FROM pemeriksaan WHERE Field = 'status'"
+    ) as any[];
+    
+    if (statusColumns && statusColumns.length > 0) {
+      const columnType = statusColumns[0].Type;
+      const enumString = columnType.toString().toLowerCase();
+      
+      // Check if 'dibatalkan' is not in the ENUM values
+      if (enumString.includes("enum") && !enumString.includes("dibatalkan")) {
+        console.log('Adding dibatalkan to status ENUM...');
+        // Modify ENUM to include 'dibatalkan' (must be outside transaction)
+        await pool.execute(`
+          ALTER TABLE pemeriksaan 
+          MODIFY COLUMN status ENUM('pendaftaran', 'perawat', 'dokter', 'farmasi', 'selesai', 'dibatalkan') DEFAULT 'pendaftaran'
+        `);
+        console.log('Status ENUM successfully updated to include dibatalkan');
+      }
+    }
+  } catch (migError: any) {
+    console.error('Error checking/updating status ENUM:', migError.message);
+    // If status is 'dibatalkan' and migration failed, return error
+    if (data.status === 'dibatalkan') {
+      return NextResponse.json(
+        { success: false, message: 'Gagal memperbarui status. Silakan coba lagi atau hubungi administrator.' },
+        { status: 500 }
+      );
+    }
+  }
+  
   const connection = await pool.getConnection();
   
   try {
     await connection.beginTransaction();
-    
-    const pemeriksaanId = params.id;
-    const data = await request.json();
 
     // Ambil pemeriksaan untuk mendapatkan pasien_id
     const [pemeriksaanRows] = await connection.execute(
@@ -137,6 +171,7 @@ export async function PUT(
       tfu,
       djj_anak,
       diagnosa,
+      alergi,
       terapi,
       resep,
       dokter_pemeriksa,
@@ -212,6 +247,10 @@ export async function PUT(
       updates.push('diagnosa = ?');
       values.push(diagnosa || null);
     }
+    if (alergi !== undefined) {
+      updates.push('alergi = ?');
+      values.push(alergi || null);
+    }
     if (terapi !== undefined) {
       updates.push('terapi = ?');
       values.push(terapi || null);
@@ -231,6 +270,23 @@ export async function PUT(
     if (status !== undefined) {
       updates.push('status = ?');
       values.push(status);
+    }
+    
+    // Auto-unlock when status changes or data is saved
+    // Check if locked_by column exists
+    let lockedByColumnExists = false;
+    try {
+      const [lockedByColumns] = await connection.execute(
+        "SHOW COLUMNS FROM pemeriksaan LIKE 'locked_by'"
+      ) as any[];
+      lockedByColumnExists = lockedByColumns.length > 0;
+      
+      if (lockedByColumnExists) {
+        // Unlock when saving data
+        updates.push('locked_by = NULL, locked_at = NULL');
+      }
+    } catch (e) {
+      // Column doesn't exist, continue
     }
 
     if (updates.length === 0 && pasienUpdates.length === 0) {
@@ -275,6 +331,18 @@ export async function GET(
 ) {
   try {
     const pemeriksaanId = params.id;
+    
+    // Check if no_registrasi column exists
+    let noRegistrasiColumnExists = false;
+    try {
+      const [noRegistrasiColumns] = await pool.execute(
+        "SHOW COLUMNS FROM pemeriksaan LIKE 'no_registrasi'"
+      ) as any[];
+      noRegistrasiColumnExists = noRegistrasiColumns.length > 0;
+    } catch (e) {
+      // Column doesn't exist, continue without it
+    }
+    
     const [rows] = await pool.execute(
       `SELECT 
         p.id as pasien_id,
@@ -287,7 +355,7 @@ export async function GET(
         p.alamat,
         p.created_at as pasien_created_at,
         p.updated_at as pasien_updated_at,
-        pm.id,
+        pm.id${noRegistrasiColumnExists ? ',\n        pm.no_registrasi' : ''},
         pm.tanggal_pemeriksaan,
         pm.tinggi_badan,
         pm.berat_badan,
@@ -304,6 +372,7 @@ export async function GET(
         pm.tfu,
         pm.djj_anak,
         pm.diagnosa,
+        pm.alergi,
         pm.terapi,
         pm.resep,
         pm.dokter_pemeriksa,

@@ -9,6 +9,7 @@ import styles from './page.module.css';
 interface Lokasi {
   id: number;
   nama_lokasi: string;
+  kode?: string | null;
   alamat: string | null;
   keterangan: string | null;
   aktif: string;
@@ -52,6 +53,7 @@ export default function SuperadminPage() {
   const [editingLokasi, setEditingLokasi] = useState<Lokasi | null>(null);
   const [lokasiFormData, setLokasiFormData] = useState({
     nama_lokasi: '',
+    kode: '',
     alamat: '',
     keterangan: '',
     aktif: 'Y',
@@ -194,33 +196,54 @@ export default function SuperadminPage() {
       const url = editingLokasi ? `/api/lokasi/${editingLokasi.id}` : '/api/lokasi';
       const method = editingLokasi ? 'PUT' : 'POST';
 
+      // Ensure kode is not empty string if it's required
+      const kodeValue = lokasiFormData.kode?.trim();
+      const requestBody = {
+        nama_lokasi: lokasiFormData.nama_lokasi.trim(),
+        kode: kodeValue && kodeValue.length > 0 ? kodeValue : null,
+        alamat: lokasiFormData.alamat?.trim() || null,
+        keterangan: lokasiFormData.keterangan?.trim() || null,
+        aktif: lokasiFormData.aktif,
+      };
+
+      console.log('Submitting lokasi data:', requestBody);
+      console.log('URL:', url);
+      console.log('Method:', method);
+
       const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nama_lokasi: lokasiFormData.nama_lokasi,
-          alamat: lokasiFormData.alamat || null,
-          keterangan: lokasiFormData.keterangan || null,
-          aktif: lokasiFormData.aktif,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Response not OK:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
+      console.log('Response:', result);
 
       if (result.success) {
         setMessage({ 
           type: 'success', 
           text: editingLokasi ? 'Data lokasi berhasil diupdate!' : 'Data lokasi berhasil ditambahkan!' 
         });
-        setLokasiFormData({ nama_lokasi: '', alamat: '', keterangan: '', aktif: 'Y' });
+        setLokasiFormData({ nama_lokasi: '', kode: '', alamat: '', keterangan: '', aktif: 'Y' });
         setShowFormLokasi(false);
         setEditingLokasi(null);
-        fetchLokasi();
+        // Refresh data after a short delay to ensure database is updated
+        setTimeout(() => {
+          fetchLokasi();
+        }, 100);
       } else {
+        console.error('API returned error:', result);
         setMessage({ type: 'error', text: result.message || 'Gagal menyimpan data lokasi' });
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Terjadi kesalahan saat menyimpan data lokasi' });
+    } catch (error: any) {
+      console.error('Error in handleLokasiSubmit:', error);
+      setMessage({ type: 'error', text: `Terjadi kesalahan saat menyimpan data lokasi: ${error.message || 'Unknown error'}` });
     } finally {
       setLoadingLokasi(false);
     }
@@ -230,6 +253,7 @@ export default function SuperadminPage() {
     setEditingLokasi(lokasi);
     setLokasiFormData({
       nama_lokasi: lokasi.nama_lokasi,
+      kode: lokasi.kode || '',
       alamat: lokasi.alamat || '',
       keterangan: lokasi.keterangan || '',
       aktif: lokasi.aktif,
@@ -466,7 +490,9 @@ export default function SuperadminPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, type: 'lokasi' | 'dokter' | 'obat') => {
     const { name, value } = e.target;
     if (type === 'lokasi') {
-      setLokasiFormData(prev => ({ ...prev, [name]: value }));
+      // Convert kode to uppercase
+      const processedValue = name === 'kode' ? value.toUpperCase() : value;
+      setLokasiFormData(prev => ({ ...prev, [name]: processedValue }));
     } else if (type === 'dokter') {
       setDokterFormData(prev => ({ ...prev, [name]: value }));
     } else if (type === 'obat') {
@@ -528,7 +554,7 @@ export default function SuperadminPage() {
                 setShowFormLokasi(!showFormLokasi);
                 if (!showFormLokasi) {
                   setEditingLokasi(null);
-                  setLokasiFormData({ nama_lokasi: '', alamat: '', keterangan: '', aktif: 'Y' });
+                  setLokasiFormData({ nama_lokasi: '', kode: '', alamat: '', keterangan: '', aktif: 'Y' });
                 }
               }}
               className={styles.btnAdd}
@@ -555,6 +581,26 @@ export default function SuperadminPage() {
                     onChange={(e) => handleChange(e, 'lokasi')}
                     required
                     className={styles.input}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="kode">
+                    Kode Lokasi <span className={styles.required}>*</span>
+                    <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>
+                      (untuk No. Registrasi, contoh: JKT, BDG)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    id="kode"
+                    name="kode"
+                    value={lokasiFormData.kode}
+                    onChange={(e) => handleChange(e, 'lokasi')}
+                    required
+                    className={styles.input}
+                    placeholder="Contoh: JKT, BDG, SBY"
+                    maxLength={10}
+                    style={{ textTransform: 'uppercase' }}
                   />
                 </div>
                 <div className={styles.formGroup}>
@@ -599,7 +645,7 @@ export default function SuperadminPage() {
                   onClick={() => {
                     setShowFormLokasi(false);
                     setEditingLokasi(null);
-                    setLokasiFormData({ nama_lokasi: '', alamat: '', keterangan: '', aktif: 'Y' });
+                    setLokasiFormData({ nama_lokasi: '', kode: '', alamat: '', keterangan: '', aktif: 'Y' });
                   }}
                   className={styles.btnCancel}
                   disabled={loadingLokasi}
@@ -628,6 +674,7 @@ export default function SuperadminPage() {
                   <tr>
                     <th>No</th>
                     <th>Nama Lokasi</th>
+                    <th>Kode</th>
                     <th>Alamat</th>
                     <th>Keterangan</th>
                     <th>Status</th>
@@ -639,6 +686,7 @@ export default function SuperadminPage() {
                     <tr key={lokasi.id}>
                       <td>{index + 1}</td>
                       <td>{lokasi.nama_lokasi}</td>
+                      <td>{lokasi.kode || '-'}</td>
                       <td>{lokasi.alamat || '-'}</td>
                       <td>{lokasi.keterangan || '-'}</td>
                       <td>{lokasi.aktif === 'Y' ? 'Aktif' : 'Tidak Aktif'}</td>

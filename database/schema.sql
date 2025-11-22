@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS pemeriksaan (
   dokter_pemeriksa VARCHAR(255),
   lokasi_id INT,
   -- Status alur
-  status ENUM('pendaftaran', 'perawat', 'dokter', 'farmasi', 'selesai') DEFAULT 'pendaftaran',
+  status ENUM('pendaftaran', 'perawat', 'dokter', 'farmasi', 'selesai', 'dibatalkan') DEFAULT 'pendaftaran',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (pasien_id) REFERENCES pasien(id) ON DELETE CASCADE,

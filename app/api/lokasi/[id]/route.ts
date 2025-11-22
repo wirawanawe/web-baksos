@@ -9,9 +9,31 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check if kode column exists and add it if not
+    let kodeColumnExists = false;
+    try {
+      const [kodeColumns] = await pool.execute(
+        "SHOW COLUMNS FROM lokasi LIKE 'kode'"
+      ) as any[];
+      kodeColumnExists = kodeColumns.length > 0;
+      
+      if (!kodeColumnExists) {
+        await pool.execute(`
+          ALTER TABLE lokasi 
+          ADD COLUMN kode VARCHAR(10) AFTER nama_lokasi
+        `);
+        kodeColumnExists = true;
+      }
+    } catch (migError: any) {
+      console.error('Migration check error (continuing anyway):', migError.message);
+    }
+    
     const id = params.id;
     const data = await request.json();
-    const { nama_lokasi, alamat, keterangan, aktif } = data;
+    const { nama_lokasi, kode, alamat, keterangan, aktif } = data;
+
+    console.log('PUT /api/lokasi/[id] - Received data:', { id, data });
+    console.log('kodeColumnExists:', kodeColumnExists);
 
     if (!nama_lokasi || !nama_lokasi.trim()) {
       return NextResponse.json(
@@ -20,22 +42,46 @@ export async function PUT(
       );
     }
 
-    const [result] = await pool.execute(
-      'UPDATE lokasi SET nama_lokasi = ?, alamat = ?, keterangan = ?, aktif = ? WHERE id = ?',
-      [nama_lokasi.trim(), alamat || null, keterangan || null, aktif || 'Y', id]
-    );
-
-    if ((result as any).affectedRows === 0) {
-      return NextResponse.json(
-        { success: false, message: 'Data lokasi tidak ditemukan' },
-        { status: 404 }
+    if (kodeColumnExists) {
+      const updateParams = [nama_lokasi.trim(), kode?.trim() || null, alamat || null, keterangan || null, aktif || 'Y', id];
+      console.log('UPDATE query params:', updateParams);
+      
+      const [result] = await pool.execute(
+        'UPDATE lokasi SET nama_lokasi = ?, kode = ?, alamat = ?, keterangan = ?, aktif = ? WHERE id = ?',
+        updateParams
       );
-    }
+      
+      console.log('UPDATE result:', { affectedRows: (result as any).affectedRows });
+      
+      if ((result as any).affectedRows === 0) {
+        return NextResponse.json(
+          { success: false, message: 'Data lokasi tidak ditemukan' },
+          { status: 404 }
+        );
+      }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Data lokasi berhasil diupdate',
-    });
+      return NextResponse.json({
+        success: true,
+        message: 'Data lokasi berhasil diupdate',
+      });
+    } else {
+      const [result] = await pool.execute(
+        'UPDATE lokasi SET nama_lokasi = ?, alamat = ?, keterangan = ?, aktif = ? WHERE id = ?',
+        [nama_lokasi.trim(), alamat || null, keterangan || null, aktif || 'Y', id]
+      );
+      
+      if ((result as any).affectedRows === 0) {
+        return NextResponse.json(
+          { success: false, message: 'Data lokasi tidak ditemukan' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Data lokasi berhasil diupdate',
+      });
+    }
   } catch (error: any) {
     console.error('Error updating lokasi:', error);
     return NextResponse.json(

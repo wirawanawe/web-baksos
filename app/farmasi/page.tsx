@@ -8,6 +8,7 @@ import styles from './page.module.css';
 
 interface Patient {
   id: number;
+  no_registrasi?: string | null;
   nama: string;
   no_ktp: string;
   no_telepon: string;
@@ -18,6 +19,8 @@ interface Patient {
   diagnosa: string | null;
   resep: string | null;
   status: string;
+  locked_by?: string | null;
+  locked_at?: string | null;
 }
 
 interface ResepDetail {
@@ -69,6 +72,11 @@ export default function FarmasiPage() {
   });
   const [addingResep, setAddingResep] = useState(false);
   const [deletingResep, setDeletingResep] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPatients, setTotalPatients] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const role = localStorage.getItem('user_role');
@@ -77,10 +85,22 @@ export default function FarmasiPage() {
     } else {
       fetchPatients();
       fetchObat();
+      
+      // Auto-refresh every 30 seconds
+      const refreshInterval = setInterval(() => {
+        // Only refresh if no patient is selected
+        if (!selectedPatient) {
+          fetchPatients(currentPage, searchTerm);
+        }
+      }, 30000); // 30 seconds
+      
+      return () => clearInterval(refreshInterval);
     }
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fetchPatients uses currentPage and searchTerm which are already in deps
+  }, [router, selectedPatient, currentPage, searchTerm]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = async (page: number = currentPage, search: string = searchTerm) => {
     try {
       setFetching(true);
       const tanggalPraktik = localStorage.getItem('tanggal_praktik');
@@ -91,16 +111,24 @@ export default function FarmasiPage() {
         return;
       }
       
-      // Filter berdasarkan tanggal praktik dan lokasi
-      let url = `/api/patients?status=dokter&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`;
+      // Filter berdasarkan status 'farmasi' (hanya pasien yang memiliki resep dari dokter)
+      // dan tanggal praktik serta lokasi dengan pagination dan search
+      let url = `/api/patients?status=farmasi&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}&page=${page}&limit=${itemsPerPage}`;
       if (lokasiId) {
         url += `&lokasi_id=${lokasiId}`;
+      }
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
       }
       
       const response = await fetch(url);
       const result = await response.json();
       if (result.success) {
         setPatients(result.data || []);
+        if (result.pagination) {
+          setTotalPages(result.pagination.totalPages);
+          setTotalPatients(result.pagination.total);
+        }
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -109,6 +137,25 @@ export default function FarmasiPage() {
       setFetching(false);
     }
   };
+  
+  useEffect(() => {
+    // Debounce search
+    const timer = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchPatients(1, searchTerm);
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+  
+  useEffect(() => {
+    fetchPatients(currentPage, searchTerm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   const fetchObat = async () => {
     try {
@@ -134,6 +181,7 @@ export default function FarmasiPage() {
   };
 
   const handleSelectPatient = async (patient: Patient) => {
+    // No lock mechanism for farmasi - can select any patient
     setSelectedPatient(patient);
     setMessage(null);
     setEditingResep(null);
@@ -349,9 +397,10 @@ export default function FarmasiPage() {
 
       if (result.success) {
         setMessage({ type: 'success', text: 'Obat berhasil diberikan kepada pasien!' });
+        
         setSelectedPatient(null);
         setResepDetails([]);
-        fetchPatients();
+        fetchPatients(currentPage, searchTerm);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setMessage({ type: 'error', text: result.message || 'Gagal menyimpan data' });
@@ -374,29 +423,91 @@ export default function FarmasiPage() {
       )}
 
       <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Daftar Pasien Menunggu Obat</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+          <h2 className={styles.sectionTitle} style={{ marginBottom: 0 }}>Daftar Pasien Menunggu Obat</h2>
+          <input
+            type="text"
+            placeholder="Cari pasien (nama, KTP, telepon)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '4px',
+              border: '1px solid #ddd',
+              fontSize: '14px',
+              minWidth: '250px'
+            }}
+          />
+        </div>
         {fetching ? (
           <p>Memuat data...</p>
         ) : patients.length === 0 ? (
-          <p className={styles.empty}>Tidak ada pasien yang menunggu obat</p>
+          <p className={styles.empty}>Tidak ada pasien yang menunggu obat{searchTerm ? ` dengan kata kunci "${searchTerm}"` : ''}</p>
         ) : (
-          <div className={styles.patientList}>
-            {patients.map((patient) => (
-              <div
-                key={patient.id}
-                className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
-                onClick={() => handleSelectPatient(patient)}
-              >
-                <div className={styles.patientInfo}>
-                  <strong>{patient.nama}</strong>
-                  <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
-                  {patient.diagnosa && (
-                    <span className={styles.diagnosa}>Diagnosa: {patient.diagnosa}</span>
-                  )}
+          <>
+            <div className={styles.patientList}>
+              {patients.map((patient) => (
+                <div
+                  key={patient.id}
+                  className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
+                  onClick={() => handleSelectPatient(patient)}
+                >
+                  <div className={styles.patientInfo}>
+                    {patient.no_registrasi && (
+                      <span style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '0.9em', marginBottom: '4px', display: 'block' }}>
+                        No. Registrasi: {patient.no_registrasi}
+                      </span>
+                    )}
+                    <strong>{patient.nama}</strong>
+                    <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                    {patient.diagnosa && (
+                      <span className={styles.diagnosa}>Diagnosa: {patient.diagnosa}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', padding: '10px', borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                  Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalPatients)} dari {totalPatients} pasien
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || fetching}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      backgroundColor: currentPage === 1 ? '#f3f4f6' : 'white',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Sebelumnya
+                  </button>
+                  <span style={{ padding: '6px 12px', fontSize: '14px' }}>
+                    Halaman {currentPage} dari {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || fetching}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      backgroundColor: currentPage === totalPages ? '#f3f4f6' : 'white',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Selanjutnya
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
@@ -631,7 +742,21 @@ export default function FarmasiPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
+                // Unlock patient before clearing selection
+                if (selectedPatient) {
+                  try {
+                    const user_name = localStorage.getItem('user_name') || '';
+                    await fetch(`/api/patients/${selectedPatient.id}/lock`, {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ user_name }),
+                    });
+                  } catch (error) {
+                    console.error('Error unlocking patient:', error);
+                  }
+                }
+                
                 setSelectedPatient(null);
                 setResepDetails([]);
               }}

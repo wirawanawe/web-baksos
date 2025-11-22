@@ -8,6 +8,7 @@ import styles from './page.module.css';
 
 interface Patient {
   id: number;
+  no_registrasi?: string | null;
   nama: string;
   no_ktp: string | null;
   no_telepon: string | null;
@@ -28,6 +29,12 @@ export default function AdminPage() {
   const [fetchingPatients, setFetchingPatients] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPatients, setTotalPatients] = useState(0);
+  const [cancellingPatient, setCancellingPatient] = useState<number | null>(null);
+  const itemsPerPage = 10;
   
   const [formData, setFormData] = useState({
     nama: '',
@@ -66,17 +73,22 @@ export default function AdminPage() {
       }
       fetchPatients();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fetchPatients uses currentPage and searchTerm which are managed separately
   }, [router]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = async (page: number = currentPage, search: string = searchTerm) => {
     try {
       setFetchingPatients(true);
       const lokasiId = localStorage.getItem('lokasi_id');
       
-      // Fetch patients filtered by lokasi_id
-      let url = '/api/patients';
+      // Fetch patients filtered by lokasi_id with pagination and search
+      let url = `/api/patients?page=${page}&limit=${itemsPerPage}`;
       if (lokasiId) {
-        url += `?lokasi_id=${lokasiId}`;
+        url += `&lokasi_id=${lokasiId}`;
+      }
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
       }
       
       const response = await fetch(url);
@@ -84,9 +96,11 @@ export default function AdminPage() {
       
       if (result.success) {
         const patientsData = result.data || [];
-        // If tanggalPraktik exists, optionally filter by date on client side
-        // But for admin, we show all patients
         setPatients(patientsData);
+        if (result.pagination) {
+          setTotalPages(result.pagination.totalPages);
+          setTotalPatients(result.pagination.total);
+        }
       } else {
         console.error('Failed to fetch patients:', result.message);
         setMessage({ type: 'error', text: result.message || 'Gagal memuat data pasien' });
@@ -98,10 +112,63 @@ export default function AdminPage() {
       setFetchingPatients(false);
     }
   };
+  
+  useEffect(() => {
+    // Debounce search
+    const timer = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchPatients(1, searchTerm);
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+  
+  useEffect(() => {
+    fetchPatients(currentPage, searchTerm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCancelPatient = async (patientId: number, patientName: string) => {
+    if (!confirm(`Apakah Anda yakin ingin membatalkan pendaftaran pasien "${patientName}"?`)) {
+      return;
+    }
+
+    setCancellingPatient(patientId);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/patients/${patientId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'dibatalkan',
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMessage({ type: 'success', text: `Pendaftaran pasien "${patientName}" berhasil dibatalkan` });
+        fetchPatients(currentPage, searchTerm);
+      } else {
+        setMessage({ type: 'error', text: result.message || 'Gagal membatalkan pendaftaran pasien' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Terjadi kesalahan saat membatalkan pendaftaran pasien' });
+    } finally {
+      setCancellingPatient(null);
+    }
   };
 
   const handleSetupDatabase = async () => {
@@ -176,7 +243,7 @@ export default function AdminPage() {
           alamat: '',
         });
         // Refresh daftar pasien
-        fetchPatients();
+        fetchPatients(currentPage, searchTerm);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setMessage({ type: 'error', text: result.message || 'Gagal menyimpan data' });
@@ -330,28 +397,45 @@ export default function AdminPage() {
 
       {/* Daftar Pasien */}
       <div className={styles.section}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
           <h2 className={styles.sectionTitle} style={{ marginBottom: 0, borderBottom: 'none' }}>DAFTAR PASIEN</h2>
-          <button
-            type="button"
-            onClick={fetchPatients}
-            disabled={fetchingPatients}
-            className={styles.btnRefresh}
-          >
-            {fetchingPatients ? 'Memuat...' : '🔄 Refresh'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="Cari pasien (nama, KTP, telepon)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '4px',
+                border: '1px solid #ddd',
+                fontSize: '14px',
+                minWidth: '250px'
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fetchPatients(currentPage, searchTerm)}
+              disabled={fetchingPatients}
+              className={styles.btnRefresh}
+            >
+              {fetchingPatients ? 'Memuat...' : '🔄 Refresh'}
+            </button>
+          </div>
         </div>
         
         {fetchingPatients ? (
           <p style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>Memuat data pasien...</p>
         ) : patients.length === 0 ? (
-          <p className={styles.empty}>Tidak ada pasien terdaftar</p>
+          <p className={styles.empty}>Tidak ada pasien terdaftar{searchTerm ? ` dengan kata kunci "${searchTerm}"` : ''}</p>
         ) : (
-          <div className={styles.patientTable}>
-            <table>
+          <>
+            <div className={styles.patientTable}>
+              <table>
               <thead>
                 <tr>
                   <th>No</th>
+                  <th>No. Registrasi</th>
                   <th>Nama</th>
                   <th>Jenis Kelamin</th>
                   <th>Usia</th>
@@ -360,33 +444,96 @@ export default function AdminPage() {
                   <th>Dokter</th>
                   <th>Status</th>
                   <th>Tanggal</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {patients.map((patient, index) => (
                   <tr key={patient.id}>
-                    <td>{index + 1}</td>
+                    <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                    <td className={styles.cellName}>{patient.no_registrasi || '-'}</td>
                     <td className={styles.cellName}>{patient.nama}</td>
-                    <td>{patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</td>
-                    <td>{formatAge(patient.usia, patient.tanggal_lahir)}</td>
-                    <td>{patient.no_ktp || '-'}</td>
-                    <td>{patient.no_telepon || '-'}</td>
-                    <td>{patient.dokter_pemeriksa || '-'}</td>
-                    <td>
-                      <span className={`${styles.statusBadge} ${styles[`status${patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}`]}`}>
-                        {patient.status}
-                      </span>
-                    </td>
-                    <td className={styles.cellDate}>
-                      {patient.tanggal_pemeriksaan 
-                        ? new Date(patient.tanggal_pemeriksaan).toLocaleDateString('id-ID')
-                        : new Date(patient.created_at).toLocaleDateString('id-ID')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td>{patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</td>
+                      <td>{formatAge(patient.usia, patient.tanggal_lahir)}</td>
+                      <td>{patient.no_ktp || '-'}</td>
+                      <td>{patient.no_telepon || '-'}</td>
+                      <td>{patient.dokter_pemeriksa || '-'}</td>
+                      <td>
+                        <span className={`${styles.statusBadge} ${styles[`status${patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}`]}`}>
+                          {patient.status}
+                        </span>
+                      </td>
+                      <td className={styles.cellDate}>
+                        {patient.tanggal_pemeriksaan 
+                          ? new Date(patient.tanggal_pemeriksaan).toLocaleDateString('id-ID')
+                          : new Date(patient.created_at).toLocaleDateString('id-ID')}
+                      </td>
+                      <td>
+                        {patient.status === 'pendaftaran' && (
+                          <button
+                            onClick={() => handleCancelPatient(patient.id, patient.nama)}
+                            disabled={cancellingPatient === patient.id}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '12px',
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: cancellingPatient === patient.id ? 'not-allowed' : 'pointer',
+                              opacity: cancellingPatient === patient.id ? 0.6 : 1
+                            }}
+                          >
+                            {cancellingPatient === patient.id ? 'Membatalkan...' : 'Batalkan'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', padding: '10px', borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                  Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalPatients)} dari {totalPatients} pasien
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || fetchingPatients}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      backgroundColor: currentPage === 1 ? '#f3f4f6' : 'white',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Sebelumnya
+                  </button>
+                  <span style={{ padding: '6px 12px', fontSize: '14px' }}>
+                    Halaman {currentPage} dari {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || fetchingPatients}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      backgroundColor: currentPage === totalPages ? '#f3f4f6' : 'white',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Selanjutnya
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

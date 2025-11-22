@@ -8,6 +8,7 @@ import styles from './page.module.css';
 
 interface Patient {
   id: number;
+  no_registrasi?: string | null;
   nama: string;
   no_ktp: string;
   no_telepon: string;
@@ -23,8 +24,19 @@ interface Patient {
   gds: number | null;
   as_urat: number | null;
   keluhan: string | null;
+  anamnesa?: string | null;
+  pemeriksaan_fisik?: string | null;
+  hpht?: string | null;
+  hpl?: string | null;
+  tfu?: number | null;
+  djj_anak?: number | null;
+  diagnosa?: string | null;
+  alergi?: string | null;
+  terapi?: string | null;
   dokter_pemeriksa: string | null;
   status: string;
+  locked_by?: string | null;
+  locked_at?: string | null;
 }
 
 interface Obat {
@@ -49,6 +61,11 @@ export default function DokterPage() {
   const [obatList, setObatList] = useState<Obat[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [resepItems, setResepItems] = useState<ResepItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPatients, setTotalPatients] = useState(0);
+  const itemsPerPage = 10;
   
   const [formData, setFormData] = useState({
     anamnesa: '',
@@ -58,6 +75,7 @@ export default function DokterPage() {
     tfu: '',
     djj_anak: '',
     diagnosa: '',
+    alergi: '',
     terapi: '',
   });
 
@@ -68,10 +86,22 @@ export default function DokterPage() {
     } else {
       fetchPatients();
       fetchObat();
+      
+      // Auto-refresh every 30 seconds
+      const refreshInterval = setInterval(() => {
+        // Only refresh if no patient is selected
+        if (!selectedPatient) {
+          fetchPatients(currentPage, searchTerm);
+        }
+      }, 30000); // 30 seconds
+      
+      return () => clearInterval(refreshInterval);
     }
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fetchPatients uses currentPage and searchTerm which are already in deps
+  }, [router, selectedPatient, currentPage, searchTerm]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = async (page: number = currentPage, search: string = searchTerm) => {
     try {
       setFetching(true);
       const tanggalPraktik = localStorage.getItem('tanggal_praktik');
@@ -83,10 +113,13 @@ export default function DokterPage() {
       }
       
       // Dokter melihat pasien dengan status 'perawat' (sudah diperiksa perawat)
-      // Filter berdasarkan lokasi yang dipilih saat login
-      let url = `/api/patients?status=perawat&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`;
+      // Filter berdasarkan lokasi yang dipilih saat login dengan pagination dan search
+      let url = `/api/patients?status=perawat&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}&page=${page}&limit=${itemsPerPage}`;
       if (lokasiId) {
         url += `&lokasi_id=${lokasiId}`;
+      }
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
       }
       
       const response = await fetch(url);
@@ -94,6 +127,10 @@ export default function DokterPage() {
       
       if (result.success) {
         setPatients(result.data || []);
+        if (result.pagination) {
+          setTotalPages(result.pagination.totalPages);
+          setTotalPatients(result.pagination.total);
+        }
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -102,6 +139,25 @@ export default function DokterPage() {
       setFetching(false);
     }
   };
+  
+  useEffect(() => {
+    // Debounce search
+    const timer = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchPatients(1, searchTerm);
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+  
+  useEffect(() => {
+    fetchPatients(currentPage, searchTerm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   const fetchObat = async () => {
     try {
@@ -141,17 +197,45 @@ export default function DokterPage() {
     }
   };
 
-  const handleSelectPatient = (patient: Patient) => {
+  const handleSelectPatient = async (patient: Patient) => {
+    const user_name = localStorage.getItem('user_name') || '';
+    
+    // Update locked_by to track current doctor (without strict lock)
+    // API will return warning if patient is being processed by another doctor
+    try {
+      const lockResponse = await fetch(`/api/patients/${patient.id}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_name, user_role: 'dokter' }),
+      });
+      
+      const lockResult = await lockResponse.json();
+      
+      // Show warning if patient is being processed by another doctor
+      if (lockResult.warning && lockResult.warning.locked_by) {
+        setMessage({ 
+          type: 'error', 
+          text: `⚠️ Peringatan: Pasien sedang diperiksa oleh ${lockResult.warning.locked_by}. Pastikan tidak terjadi duplikasi pemeriksaan.` 
+        });
+      } else {
+        setMessage(null);
+      }
+    } catch (error) {
+      console.error('Error updating locked_by:', error);
+      // Continue anyway
+    }
+    
     setSelectedPatient(patient);
     setFormData({
-      anamnesa: '',
-      pemeriksaan_fisik: '',
-      hpht: '',
-      hpl: '',
-      tfu: '',
-      djj_anak: '',
-      diagnosa: '',
-      terapi: '',
+      anamnesa: patient.anamnesa || '',
+      pemeriksaan_fisik: patient.pemeriksaan_fisik || '',
+      hpht: patient.hpht || '',
+      hpl: patient.hpl || '',
+      tfu: patient.tfu?.toString() || '',
+      djj_anak: patient.djj_anak?.toString() || '',
+      diagnosa: patient.diagnosa || '',
+      alergi: (patient as any).alergi || '',
+      terapi: patient.terapi || '',
     });
     setResepItems([]);
     setMessage(null);
@@ -265,6 +349,11 @@ export default function DokterPage() {
         jumlah: typeof item.jumlah === 'string' ? parseInt(item.jumlah) || 1 : item.jumlah
       }));
       
+      // Determine status based on whether there are resep items
+      // If no resep → status = 'selesai' (patient is done)
+      // If has resep → status = 'farmasi' (patient goes to pharmacy)
+      const finalStatus = resepItemsToSave.length > 0 ? 'farmasi' : 'selesai';
+      
       // Update patient data
       const updateResponse = await fetch(`/api/patients/${selectedPatient.id}`, {
         method: 'PUT',
@@ -279,10 +368,11 @@ export default function DokterPage() {
           tfu: parseFloat(formData.tfu) || null,
           djj_anak: parseInt(formData.djj_anak) || null,
           diagnosa: formData.diagnosa || null,
+          alergi: formData.alergi || null,
           terapi: formData.terapi || null,
           resep: resepItemsToSave.length > 0 ? JSON.stringify(resepItemsToSave) : null,
           dokter_pemeriksa: user_name,
-          status: 'dokter',
+          status: finalStatus,
         }),
       });
 
@@ -322,7 +412,10 @@ export default function DokterPage() {
         }
       }
 
-      setMessage({ type: 'success', text: 'Data pemeriksaan dokter berhasil disimpan!' });
+      const successMessage = resepItemsToSave.length > 0 
+        ? 'Data pemeriksaan dokter berhasil disimpan! Pasien akan dikirim ke farmasi.'
+        : 'Data pemeriksaan dokter berhasil disimpan! Pasien dinyatakan selesai berobat.';
+      setMessage({ type: 'success', text: successMessage });
       setFormData({
         anamnesa: '',
         pemeriksaan_fisik: '',
@@ -331,11 +424,27 @@ export default function DokterPage() {
         tfu: '',
         djj_anak: '',
         diagnosa: '',
+        alergi: '',
         terapi: '',
       });
       setResepItems([]);
+      
+      // Clear locked_by after submit
+      if (selectedPatient) {
+        try {
+          const user_name = localStorage.getItem('user_name') || '';
+          await fetch(`/api/patients/${selectedPatient.id}/lock`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_name }),
+          });
+        } catch (error) {
+          console.error('Error clearing locked_by:', error);
+        }
+      }
+      
       setSelectedPatient(null);
-      fetchPatients();
+      fetchPatients(currentPage, searchTerm);
       fetchObat(); // Refresh daftar obat untuk menampilkan stok terbaru
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
@@ -356,32 +465,94 @@ export default function DokterPage() {
       )}
 
       <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Daftar Pasien Menunggu Pemeriksaan Dokter</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+          <h2 className={styles.sectionTitle} style={{ marginBottom: 0 }}>Daftar Pasien Menunggu Pemeriksaan Dokter</h2>
+          <input
+            type="text"
+            placeholder="Cari pasien (nama, KTP, telepon)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '4px',
+              border: '1px solid #ddd',
+              fontSize: '14px',
+              minWidth: '250px'
+            }}
+          />
+        </div>
         {fetching ? (
           <p>Memuat data...</p>
         ) : patients.length === 0 ? (
-          <p className={styles.empty}>Tidak ada pasien yang menunggu pemeriksaan dokter</p>
+          <p className={styles.empty}>Tidak ada pasien yang menunggu pemeriksaan dokter{searchTerm ? ` dengan kata kunci "${searchTerm}"` : ''}</p>
         ) : (
-          <div className={styles.patientList}>
-            {patients.map((patient) => (
-              <div
-                key={patient.id}
-                className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
-                onClick={() => handleSelectPatient(patient)}
-              >
-                <div className={styles.patientInfo}>
-                  <strong>{patient.nama}</strong>
-                  <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
-                  {patient.keluhan && (
-                    <span className={styles.keluhan}>Keluhan: {patient.keluhan}</span>
-                  )}
-                  {patient.tensi_darah_sistol && patient.tensi_darah_diastol && (
-                    <span>Tensi: {patient.tensi_darah_sistol}/{patient.tensi_darah_diastol} mmHg</span>
-                  )}
+          <>
+            <div className={styles.patientList}>
+              {patients.map((patient) => (
+                <div
+                  key={patient.id}
+                  className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
+                  onClick={() => handleSelectPatient(patient)}
+                >
+                  <div className={styles.patientInfo}>
+                    {patient.no_registrasi && (
+                      <span style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '0.9em', marginBottom: '4px', display: 'block' }}>
+                        No. Registrasi: {patient.no_registrasi}
+                      </span>
+                    )}
+                    <strong>{patient.nama}</strong>
+                    <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                    {patient.keluhan && (
+                      <span className={styles.keluhan}>Keluhan: {patient.keluhan}</span>
+                    )}
+                    {patient.tensi_darah_sistol && patient.tensi_darah_diastol && (
+                      <span>Tensi: {patient.tensi_darah_sistol}/{patient.tensi_darah_diastol} mmHg</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', padding: '10px', borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                  Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalPatients)} dari {totalPatients} pasien
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || fetching}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      backgroundColor: currentPage === 1 ? '#f3f4f6' : 'white',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Sebelumnya
+                  </button>
+                  <span style={{ padding: '6px 12px', fontSize: '14px' }}>
+                    Halaman {currentPage} dari {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || fetching}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      backgroundColor: currentPage === totalPages ? '#f3f4f6' : 'white',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Selanjutnya
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
@@ -502,6 +673,24 @@ export default function DokterPage() {
                   onChange={handleChange}
                   rows={3}
                   className={styles.textarea}
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>ALERGI</h2>
+            <div className={styles.formGrid}>
+              <div className={styles.formGroupFull}>
+                <label htmlFor="alergi">Alergi</label>
+                <textarea
+                  id="alergi"
+                  name="alergi"
+                  value={formData.alergi}
+                  onChange={handleChange}
+                  rows={3}
+                  className={styles.textarea}
+                  placeholder="Masukkan informasi alergi pasien (jika ada)"
                 />
               </div>
             </div>
@@ -633,7 +822,21 @@ export default function DokterPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
+                // Clear locked_by when canceling
+                if (selectedPatient) {
+                  try {
+                    const user_name = localStorage.getItem('user_name') || '';
+                    await fetch(`/api/patients/${selectedPatient.id}/lock`, {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ user_name }),
+                    });
+                  } catch (error) {
+                    console.error('Error clearing locked_by:', error);
+                  }
+                }
+                
                 setSelectedPatient(null);
                 setFormData({
                   anamnesa: '',
@@ -643,6 +846,7 @@ export default function DokterPage() {
                   tfu: '',
                   djj_anak: '',
                   diagnosa: '',
+                  alergi: '',
                   terapi: '',
                 });
                 setResepItems([]);

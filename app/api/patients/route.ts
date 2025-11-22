@@ -26,6 +26,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check and migrate if kode column doesn't exist in lokasi table
+    let kodeColumnExists = false;
+    let noRegistrasiColumnExists = false;
+    try {
+      const [kodeColumns] = await connection.execute(
+        "SHOW COLUMNS FROM lokasi LIKE 'kode'"
+      ) as any[];
+      
+      kodeColumnExists = kodeColumns.length > 0;
+      
+      if (!kodeColumnExists) {
+        console.log('kode column not found in lokasi table, adding it...');
+        await connection.execute(`
+          ALTER TABLE lokasi 
+          ADD COLUMN kode VARCHAR(10) AFTER nama_lokasi
+        `);
+        kodeColumnExists = true;
+        console.log('kode column added successfully to lokasi table');
+      }
+      
+      // Check for no_registrasi column in pemeriksaan table
+      const [noRegistrasiColumns] = await connection.execute(
+        "SHOW COLUMNS FROM pemeriksaan LIKE 'no_registrasi'"
+      ) as any[];
+      
+      noRegistrasiColumnExists = noRegistrasiColumns.length > 0;
+      
+      if (!noRegistrasiColumnExists) {
+        console.log('no_registrasi column not found in pemeriksaan table, adding it...');
+        await connection.execute(`
+          ALTER TABLE pemeriksaan 
+          ADD COLUMN no_registrasi VARCHAR(20) AFTER id,
+          ADD INDEX idx_no_registrasi (no_registrasi)
+        `);
+        noRegistrasiColumnExists = true;
+        console.log('no_registrasi column added successfully to pemeriksaan table');
+      }
+    } catch (migError: any) {
+      console.error('Migration check error (continuing anyway):', migError.message);
+      // Continue without kode and no_registrasi columns
+      kodeColumnExists = false;
+      noRegistrasiColumnExists = false;
+    }
+
     const data = await request.json();
     
     const {
@@ -51,6 +95,7 @@ export async function POST(request: NextRequest) {
       tfu,
       djj_anak,
       diagnosa,
+      alergi,
       terapi,
       resep,
       dokter_pemeriksa,
@@ -142,43 +187,102 @@ export async function POST(request: NextRequest) {
       pasienId = (pasienResult as any).insertId;
     }
 
+    // Generate nomor registrasi
+    let noRegistrasi = null;
+    if (lokasi_id && noRegistrasiColumnExists) {
+      try {
+        // Get kode lokasi
+        let kodeLokasi = 'REG';
+        if (kodeColumnExists) {
+          const [lokasiRows] = await connection.execute(
+            'SELECT kode FROM lokasi WHERE id = ?',
+            [lokasi_id]
+          ) as any[];
+          
+          if (lokasiRows && lokasiRows.length > 0 && lokasiRows[0].kode) {
+            kodeLokasi = lokasiRows[0].kode;
+          }
+        }
+        
+        // Get the last registration number for this location
+        const [lastRegRows] = await connection.execute(
+          `SELECT no_registrasi FROM pemeriksaan 
+           WHERE lokasi_id = ? AND no_registrasi IS NOT NULL 
+           ORDER BY id DESC LIMIT 1`,
+          [lokasi_id]
+        ) as any[];
+        
+        let nextNumber = 1;
+        if (lastRegRows && lastRegRows.length > 0 && lastRegRows[0].no_registrasi) {
+          const lastReg = lastRegRows[0].no_registrasi;
+          // Extract number from format: KODE-XXXX
+          const match = lastReg.match(/-(\d+)$/);
+          if (match) {
+            const lastNumber = parseInt(match[1], 10);
+            nextNumber = lastNumber + 1;
+            // Reset to 1 if exceeds 9999
+            if (nextNumber > 9999) {
+              nextNumber = 1;
+            }
+          }
+        }
+        
+        // Format: KODE-0001, KODE-0002, etc.
+        noRegistrasi = `${kodeLokasi}-${String(nextNumber).padStart(4, '0')}`;
+      } catch (regError: any) {
+        console.error('Error generating registration number:', regError);
+        // Continue without registration number if generation fails
+      }
+    }
+
     // Insert pemeriksaan
+    const insertFields = [
+      'pasien_id', 'tanggal_pemeriksaan',
+      'tinggi_badan', 'berat_badan',
+      'tensi_darah_sistol', 'tensi_darah_diastol',
+      'kolesterol', 'gds', 'as_urat',
+      'keluhan',
+      'anamnesa', 'pemeriksaan_fisik',
+      'hpht', 'hpl', 'tfu', 'djj_anak',
+      'diagnosa', 'alergi', 'terapi', 'resep',
+      'dokter_pemeriksa', 'lokasi_id', 'status'
+    ];
+    
+    const insertValues = [
+      pasienId,
+      tanggal_pemeriksaan || null,
+      tinggi_badan || null,
+      berat_badan || null,
+      tensi_darah_sistol || null,
+      tensi_darah_diastol || null,
+      kolesterol || null,
+      gds || null,
+      as_urat || null,
+      keluhan || null,
+      anamnesa || null,
+      pemeriksaan_fisik || null,
+      hpht || null,
+      hpl || null,
+      tfu || null,
+      djj_anak || null,
+      diagnosa || null,
+      alergi || null,
+      terapi || null,
+      resep || null,
+      dokter_pemeriksa || null,
+      lokasi_id || null,
+      status || 'pendaftaran',
+    ];
+    
+    if (noRegistrasiColumnExists && noRegistrasi) {
+      insertFields.unshift('no_registrasi');
+      insertValues.unshift(noRegistrasi);
+    }
+    
+    const placeholders = insertFields.map(() => '?').join(', ');
     const [pemeriksaanResult] = await connection.execute(
-      `INSERT INTO pemeriksaan (
-        pasien_id, tanggal_pemeriksaan,
-        tinggi_badan, berat_badan,
-        tensi_darah_sistol, tensi_darah_diastol,
-        kolesterol, gds, as_urat,
-        keluhan,
-        anamnesa, pemeriksaan_fisik,
-        hpht, hpl, tfu, djj_anak,
-        diagnosa, terapi, resep,
-        dokter_pemeriksa, lokasi_id, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        pasienId,
-        tanggal_pemeriksaan || null,
-        tinggi_badan || null,
-        berat_badan || null,
-        tensi_darah_sistol || null,
-        tensi_darah_diastol || null,
-        kolesterol || null,
-        gds || null,
-        as_urat || null,
-        keluhan || null,
-        anamnesa || null,
-        pemeriksaan_fisik || null,
-        hpht || null,
-        hpl || null,
-        tfu || null,
-        djj_anak || null,
-        diagnosa || null,
-        terapi || null,
-        resep || null,
-        dokter_pemeriksa || null,
-        lokasi_id || null,
-        status || 'pendaftaran',
-      ]
+      `INSERT INTO pemeriksaan (${insertFields.join(', ')}) VALUES (${placeholders})`,
+      insertValues
     );
 
     await connection.commit();
@@ -218,12 +322,74 @@ export async function GET(request: NextRequest) {
   try {
     // Check and migrate if lokasi_id column doesn't exist
     let lokasiIdColumnExists = false;
+    let alergiColumnExists = false;
+    let noRegistrasiColumnExists = false;
+    let lockedByColumnExists = false;
     try {
       const [columns] = await pool.execute(
         "SHOW COLUMNS FROM pemeriksaan LIKE 'lokasi_id'"
       ) as any[];
       
       lokasiIdColumnExists = columns.length > 0;
+      
+      // Check for alergi column
+      const [alergiColumns] = await pool.execute(
+        "SHOW COLUMNS FROM pemeriksaan LIKE 'alergi'"
+      ) as any[];
+      
+      alergiColumnExists = alergiColumns.length > 0;
+      
+      // Check for no_registrasi column
+      const [noRegistrasiColumns] = await pool.execute(
+        "SHOW COLUMNS FROM pemeriksaan LIKE 'no_registrasi'"
+      ) as any[];
+      
+      noRegistrasiColumnExists = noRegistrasiColumns.length > 0;
+      
+      // Check for locked_by column
+      const [lockedByColumns] = await pool.execute(
+        "SHOW COLUMNS FROM pemeriksaan LIKE 'locked_by'"
+      ) as any[];
+      
+      lockedByColumnExists = lockedByColumns.length > 0;
+      
+      if (!lockedByColumnExists) {
+        try {
+          await pool.execute(`
+            ALTER TABLE pemeriksaan 
+            ADD COLUMN locked_by VARCHAR(255) AFTER status,
+            ADD COLUMN locked_at TIMESTAMP NULL AFTER locked_by,
+            ADD INDEX idx_locked_by (locked_by)
+          `);
+          lockedByColumnExists = true;
+          console.log('locked_by column added successfully');
+        } catch (lockError: any) {
+          console.error('Error adding locked_by column:', lockError.message);
+        }
+      }
+      
+      if (!alergiColumnExists) {
+        try {
+          console.log('alergi column not found, adding it...');
+          await pool.execute(`
+            ALTER TABLE pemeriksaan 
+            ADD COLUMN alergi TEXT AFTER diagnosa
+          `);
+          alergiColumnExists = true;
+          console.log('alergi column added successfully');
+        } catch (alergiError: any) {
+          console.error('Error adding alergi column:', alergiError.message);
+          // Column might already exist or there's a constraint issue
+          // Check again if column exists
+          const [recheckAlergi] = await pool.execute(
+            "SHOW COLUMNS FROM pemeriksaan LIKE 'alergi'"
+          ) as any[];
+          alergiColumnExists = recheckAlergi.length > 0;
+          if (!alergiColumnExists) {
+            console.warn('Could not add alergi column, continuing without it');
+          }
+        }
+      }
       
       if (!lokasiIdColumnExists) {
         console.log('lokasi_id column not found, adding it...');
@@ -283,8 +449,9 @@ export async function GET(request: NextRequest) {
       }
     } catch (migError: any) {
       console.error('Migration check error (continuing anyway):', migError.message);
-      // Continue without lokasi_id column
+      // Continue without lokasi_id and alergi columns
       lokasiIdColumnExists = false;
+      alergiColumnExists = false;
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -294,6 +461,24 @@ export async function GET(request: NextRequest) {
     const dokter_pemeriksa = searchParams.get('dokter_pemeriksa');
     const dokter_id = searchParams.get('dokter_id');
     const lokasi_id = searchParams.get('lokasi_id');
+    const search = searchParams.get('search');
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const offset = (page - 1) * limit;
+    
+    // Ensure limit and offset are valid integers
+    if (isNaN(page) || page < 1) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid page parameter' },
+        { status: 400 }
+      );
+    }
+    if (isNaN(limit) || limit < 1) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid limit parameter' },
+        { status: 400 }
+      );
+    }
 
     // Query dengan JOIN antara pasien dan pemeriksaan
     // Include lokasi_id only if column exists
@@ -309,7 +494,7 @@ export async function GET(request: NextRequest) {
         p.alamat,
         p.created_at as pasien_created_at,
         p.updated_at as pasien_updated_at,
-        pm.id,
+        pm.id${noRegistrasiColumnExists ? ',\n        pm.no_registrasi' : ''},
         pm.tanggal_pemeriksaan,
         pm.tinggi_badan,
         pm.berat_badan,
@@ -325,11 +510,11 @@ export async function GET(request: NextRequest) {
         pm.hpl,
         pm.tfu,
         pm.djj_anak,
-        pm.diagnosa,
+        pm.diagnosa${alergiColumnExists ? ',\n        pm.alergi' : ''},
         pm.terapi,
         pm.resep,
         pm.dokter_pemeriksa${lokasiIdColumnExists ? ',\n        pm.lokasi_id' : ''},
-        pm.status,
+        pm.status${lockedByColumnExists ? ',\n        pm.locked_by,\n        pm.locked_at' : ''},
         pm.created_at,
         pm.updated_at
       FROM pemeriksaan pm
@@ -383,10 +568,31 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter berdasarkan lokasi_id (dari query param atau dari dokter)
-    const filterLokasiId = lokasi_id ? parseInt(lokasi_id) : dokterLokasiId;
-    if (filterLokasiId !== null && filterLokasiId !== undefined && lokasiIdColumnExists) {
+    let filterLokasiId: number | null = null;
+    if (lokasi_id) {
+      const parsedLokasiId = parseInt(lokasi_id, 10);
+      if (!isNaN(parsedLokasiId)) {
+        filterLokasiId = parsedLokasiId;
+      }
+    } else if (dokterLokasiId !== null && dokterLokasiId !== undefined) {
+      filterLokasiId = dokterLokasiId;
+    }
+    
+    if (filterLokasiId !== null && filterLokasiId !== undefined && !isNaN(filterLokasiId) && lokasiIdColumnExists) {
       conditions.push('pm.lokasi_id = ?');
       params.push(filterLokasiId);
+    }
+
+    // Search filter
+    if (search) {
+      const searchPattern = `%${search}%`;
+      if (noRegistrasiColumnExists) {
+        conditions.push('(p.nama LIKE ? OR p.no_ktp LIKE ? OR p.no_telepon LIKE ? OR pm.no_registrasi LIKE ?)');
+        params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+      } else {
+        conditions.push('(p.nama LIKE ? OR p.no_ktp LIKE ? OR p.no_telepon LIKE ?)');
+        params.push(searchPattern, searchPattern, searchPattern);
+      }
     }
 
     if (conditions.length > 0) {
@@ -394,9 +600,77 @@ export async function GET(request: NextRequest) {
     }
 
     query += ' ORDER BY pm.created_at DESC';
+    
+    // Add pagination - get total count first
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM pemeriksaan pm
+      INNER JOIN pasien p ON pm.pasien_id = p.id
+    `;
+    const countParams: any[] = [];
+    const countConditions: string[] = [];
+    
+    // Apply same conditions for count
+    if (startDate && endDate) {
+      if (startDate === endDate) {
+        countConditions.push('(pm.tanggal_pemeriksaan = ? OR (pm.tanggal_pemeriksaan IS NULL AND DATE(pm.created_at) = ?))');
+        countParams.push(startDate, startDate);
+      } else {
+        countConditions.push('(pm.tanggal_pemeriksaan BETWEEN ? AND ? OR (pm.tanggal_pemeriksaan IS NULL AND DATE(pm.created_at) BETWEEN ? AND ?))');
+        countParams.push(startDate, endDate, startDate, endDate);
+      }
+    }
+    if (status) {
+      countConditions.push('pm.status = ?');
+      countParams.push(status);
+    }
+    if (dokter_pemeriksa) {
+      const searchName = dokter_pemeriksa.trim();
+      const cleanName = searchName.replace(/^Dr\.\s*/i, '').replace(/,\s*Sp\.[A-Z]+$/i, '').trim();
+      countConditions.push('(TRIM(pm.dokter_pemeriksa) = TRIM(?) OR TRIM(pm.dokter_pemeriksa) LIKE ? OR TRIM(pm.dokter_pemeriksa) LIKE ? OR TRIM(pm.dokter_pemeriksa) LIKE ? OR TRIM(?) LIKE CONCAT("%", TRIM(pm.dokter_pemeriksa), "%"))');
+      countParams.push(searchName, `%${cleanName}%`, `%${searchName}%`, `%${cleanName.split(' ')[0]}%`, searchName);
+    }
+    if (filterLokasiId !== null && filterLokasiId !== undefined && !isNaN(filterLokasiId) && lokasiIdColumnExists) {
+      countConditions.push('pm.lokasi_id = ?');
+      countParams.push(filterLokasiId);
+    }
+    if (search) {
+      countConditions.push('(p.nama LIKE ? OR p.no_ktp LIKE ? OR p.no_telepon LIKE ?)');
+      const searchPattern = `%${search}%`;
+      countParams.push(searchPattern, searchPattern, searchPattern);
+    }
+    
+    if (countConditions.length > 0) {
+      countQuery += ' WHERE ' + countConditions.join(' AND ');
+    }
+    
+    let total = 0;
+    let totalPages = 1;
+    try {
+      const [countResult] = await pool.execute(countQuery, countParams) as any[];
+      total = countResult[0]?.total || 0;
+      totalPages = Math.ceil(total / limit);
+    } catch (countError: any) {
+      console.error('Error executing count query:', countError);
+      // If count query fails, try to get total from main query without limit
+      // For now, just set default values
+      total = 0;
+      totalPages = 1;
+    }
+    
+    // MySQL doesn't support LIMIT and OFFSET as parameters in prepared statements
+    // Use them as literals instead (with validation for security)
+    const limitNum = Math.max(1, Math.min(1000, Number(limit))); // Clamp between 1 and 1000
+    const offsetNum = Math.max(0, Number(offset)); // Must be >= 0
+    query += ` LIMIT ${limitNum} OFFSET ${offsetNum}`;
 
     console.log('SQL Query:', query);
     console.log('SQL Params:', params);
+    console.log('SQL Params count:', params.length);
+    console.log('Limit:', limitNum, 'Type:', typeof limitNum);
+    console.log('Offset:', offsetNum, 'Type:', typeof offsetNum);
+    console.log('Count Query:', countQuery);
+    console.log('Count Params:', countParams);
 
     const [rows] = await pool.execute(query, params);
     
@@ -405,7 +679,16 @@ export async function GET(request: NextRequest) {
       console.log('Sample result:', rows[0]);
     }
 
-    return NextResponse.json({ success: true, data: rows });
+    return NextResponse.json({ 
+      success: true, 
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages
+      }
+    });
   } catch (error: any) {
     console.error('Error fetching patient data:', error);
     

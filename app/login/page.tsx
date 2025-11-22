@@ -42,11 +42,38 @@ export default function LoginPage() {
   useEffect(() => {
     // Fetch dokter list when role is 'dokter' and lokasi_id is selected
     if (formData.role === 'dokter' && formData.lokasi_id) {
-      fetchDokter();
+      const fetchDokterData = async () => {
+        if (!formData.lokasi_id) {
+          setDokterList([]);
+          return;
+        }
+        
+        try {
+          setFetchingDokter(true);
+          const response = await fetch('/api/dokter?aktif=true');
+          const result = await response.json();
+          if (result.success) {
+            // Filter dokter berdasarkan lokasi_id yang dipilih
+            // Dokter tanpa lokasi (lokasi_id = null) akan muncul di semua lokasi
+            const filteredDokter = (result.data || []).filter((dokter: Dokter) => 
+              !dokter.lokasi_id || dokter.lokasi_id.toString() === formData.lokasi_id
+            );
+            setDokterList(filteredDokter);
+          }
+        } catch (error) {
+          console.error('Error fetching dokter:', error);
+        } finally {
+          setFetchingDokter(false);
+        }
+      };
+      
+      fetchDokterData();
     } else {
       setDokterList([]);
       setFormData(prev => ({ ...prev, dokter_id: '' }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fetchDokterData is defined inside useEffect and uses formData.lokasi_id which is already in deps
   }, [formData.role, formData.lokasi_id]);
 
   const fetchDokter = async () => {

@@ -54,10 +54,18 @@ export default function ObatPage() {
       
       // Auto-set lokasi_id dari localStorage saat pertama kali load
       const lokasiIdFromStorage = localStorage.getItem('lokasi_id');
-      if (lokasiIdFromStorage && !formData.lokasi_id) {
-        setFormData(prev => ({ ...prev, lokasi_id: lokasiIdFromStorage }));
+      if (lokasiIdFromStorage) {
+        setFormData(prev => {
+          // Only update if not already set
+          if (!prev.lokasi_id) {
+            return { ...prev, lokasi_id: lokasiIdFromStorage };
+          }
+          return prev;
+        });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // formData.lokasi_id is intentionally excluded - we use functional update pattern
   }, [router]);
 
   const fetchLokasi = async () => {

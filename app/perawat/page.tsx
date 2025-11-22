@@ -8,6 +8,7 @@ import styles from './page.module.css';
 
 interface Patient {
   id: number;
+  no_registrasi?: string | null;
   nama: string;
   no_ktp: string;
   no_telepon: string;
@@ -17,23 +18,22 @@ interface Patient {
   alamat: string;
   dokter_pemeriksa: string | null;
   status: string;
-}
-
-interface Dokter {
-  id: number;
-  nama_dokter: string;
+  locked_by?: string | null;
+  locked_at?: string | null;
 }
 
 export default function PerawatPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
-  const [fetchingDokter, setFetchingDokter] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [dokterList, setDokterList] = useState<Dokter[]>([]);
-  const [filterDokter, setFilterDokter] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPatients, setTotalPatients] = useState(0);
+  const itemsPerPage = 10;
   
   const [formData, setFormData] = useState({
     tinggi_badan: '',
@@ -46,22 +46,7 @@ export default function PerawatPage() {
     keluhan: '',
   });
 
-  const fetchDokter = async () => {
-    try {
-      setFetchingDokter(true);
-      const response = await fetch('/api/dokter?aktif=true');
-      const result = await response.json();
-      if (result.success) {
-        setDokterList(result.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching dokter:', error);
-    } finally {
-      setFetchingDokter(false);
-    }
-  };
-
-  const fetchPatients = async () => {
+  const fetchPatients = async (page: number = currentPage, search: string = searchTerm) => {
     try {
       setFetching(true);
       const tanggalPraktik = localStorage.getItem('tanggal_praktik');
@@ -72,19 +57,23 @@ export default function PerawatPage() {
         return;
       }
       
-      // Build URL dengan filter dokter dan lokasi
-      let url = `/api/patients?status=pendaftaran&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}`;
+      // Build URL dengan filter dokter, lokasi, pagination, dan search
+      let url = `/api/patients?status=pendaftaran&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}&page=${page}&limit=${itemsPerPage}`;
       if (lokasiId) {
         url += `&lokasi_id=${lokasiId}`;
       }
-      if (filterDokter) {
-        url += `&dokter_pemeriksa=${encodeURIComponent(filterDokter)}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
       }
       
       const response = await fetch(url);
       const result = await response.json();
       if (result.success) {
         setPatients(result.data || []);
+        if (result.pagination) {
+          setTotalPages(result.pagination.totalPages);
+          setTotalPatients(result.pagination.total);
+        }
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -93,28 +82,48 @@ export default function PerawatPage() {
       setFetching(false);
     }
   };
+  
+  useEffect(() => {
+    // Debounce search
+    const timer = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchPatients(1, searchTerm);
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+  
+  useEffect(() => {
+    fetchPatients(currentPage, searchTerm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   useEffect(() => {
     const role = localStorage.getItem('user_role');
     if (role !== 'perawat') {
       router.push('/login');
     } else {
-      fetchDokter();
       fetchPatients();
+      
+      // Auto-refresh every 30 seconds
+      const refreshInterval = setInterval(() => {
+        // Only refresh if no patient is selected
+        if (!selectedPatient) {
+          fetchPatients(currentPage, searchTerm);
+        }
+      }, 30000); // 30 seconds
+      
+      return () => clearInterval(refreshInterval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
-
-  useEffect(() => {
-    // Refetch patients ketika filter dokter berubah
-    const role = localStorage.getItem('user_role');
-    if (role === 'perawat') {
-      fetchPatients();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterDokter]);
+  }, [router, selectedPatient, currentPage, searchTerm]);
 
   const handleSelectPatient = (patient: Patient) => {
+    // No lock mechanism for perawat - can select any patient
     setSelectedPatient(patient);
     setFormData({
       tinggi_badan: '',
@@ -178,7 +187,7 @@ export default function PerawatPage() {
           keluhan: '',
         });
         setSelectedPatient(null);
-        fetchPatients();
+        fetchPatients(currentPage, searchTerm);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setMessage({ type: 'error', text: result.message || 'Gagal menyimpan data' });
@@ -201,14 +210,14 @@ export default function PerawatPage() {
       )}
 
       <div className={styles.section}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <h2 className={styles.sectionTitle}>Daftar Pasien Menunggu Pemeriksaan</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label htmlFor="filterDokter" style={{ fontWeight: 'bold' }}>Filter Dokter Pemeriksa:</label>
-            <select
-              id="filterDokter"
-              value={filterDokter}
-              onChange={(e) => setFilterDokter(e.target.value)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              placeholder="Cari pasien (nama, KTP, telepon)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               style={{
                 padding: '8px 12px',
                 borderRadius: '4px',
@@ -216,43 +225,79 @@ export default function PerawatPage() {
                 fontSize: '14px',
                 minWidth: '200px'
               }}
-            >
-              <option value="">Semua Dokter</option>
-              {fetchingDokter ? (
-                <option disabled>Memuat...</option>
-              ) : (
-                dokterList.map((dokter) => (
-                  <option key={dokter.id} value={dokter.nama_dokter}>
-                    {dokter.nama_dokter}
-                  </option>
-                ))
-              )}
-            </select>
+            />
           </div>
         </div>
         {fetching ? (
           <p>Memuat data...</p>
         ) : patients.length === 0 ? (
-          <p className={styles.empty}>Tidak ada pasien yang menunggu pemeriksaan{filterDokter ? ` untuk dokter ${filterDokter}` : ''}</p>
+          <p className={styles.empty}>Tidak ada pasien yang menunggu pemeriksaan{searchTerm ? ` dengan kata kunci "${searchTerm}"` : ''}</p>
         ) : (
-          <div className={styles.patientList}>
-            {patients.map((patient) => (
-              <div
-                key={patient.id}
-                className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
-                onClick={() => handleSelectPatient(patient)}
-              >
-                <div className={styles.patientInfo}>
-                  <strong>{patient.nama}</strong>
-                  <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
-                  {patient.dokter_pemeriksa && (
-                    <span style={{ color: '#666', fontSize: '0.9em' }}>Dokter: {patient.dokter_pemeriksa}</span>
-                  )}
-                  <span className={styles.address}>{patient.alamat}</span>
+          <>
+            <div className={styles.patientList}>
+              {patients.map((patient) => (
+                <div
+                  key={patient.id}
+                  className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
+                  onClick={() => handleSelectPatient(patient)}
+                >
+                  <div className={styles.patientInfo}>
+                    {patient.no_registrasi && (
+                      <span style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '0.9em', marginBottom: '4px', display: 'block' }}>
+                        No. Registrasi: {patient.no_registrasi}
+                      </span>
+                    )}
+                    <strong>{patient.nama}</strong>
+                    <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                    {patient.dokter_pemeriksa && (
+                      <span style={{ color: '#666', fontSize: '0.9em' }}>Dokter: {patient.dokter_pemeriksa}</span>
+                    )}
+                    <span className={styles.address}>{patient.alamat}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', padding: '10px', borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                  Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalPatients)} dari {totalPatients} pasien
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || fetching}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      backgroundColor: currentPage === 1 ? '#f3f4f6' : 'white',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Sebelumnya
+                  </button>
+                  <span style={{ padding: '6px 12px', fontSize: '14px' }}>
+                    Halaman {currentPage} dari {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || fetching}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      backgroundColor: currentPage === totalPages ? '#f3f4f6' : 'white',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Selanjutnya
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 

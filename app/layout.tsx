@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
+  icons: {
+    icon: '/images/favicon.ico',
+  },  
   title: 'Bakti Sosial - Input Data Pasien',
   description: 'Aplikasi input data pasien bakti sosial pengobatan gratis',
 }
