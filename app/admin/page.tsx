@@ -73,9 +73,7 @@ export default function AdminPage() {
       }
       fetchPatients();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // fetchPatients uses currentPage and searchTerm which are managed separately
-  }, [router]);
+  }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchPatients = async (page: number = currentPage, search: string = searchTerm) => {
     try {
@@ -328,17 +326,17 @@ export default function AdminPage() {
             <div className={styles.formGroup}>
               <label htmlFor="tanggal_lahir">Tanggal Lahir <span className={styles.required}>*</span></label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input
+              <input
                   type="date"
                   id="tanggal_lahir"
                   name="tanggal_lahir"
                   value={formData.tanggal_lahir}
-                  onChange={handleChange}
-                  required
+                onChange={handleChange}
+                required
                   max={new Date().toISOString().split('T')[0]}
-                  className={styles.input}
+                className={styles.input}
                   style={{ flex: 1 }}
-                />
+              />
                 {usia !== null && (
                   <span style={{ 
                     fontSize: '14px', 

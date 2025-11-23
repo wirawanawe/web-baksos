@@ -96,9 +96,7 @@ export default function FarmasiPage() {
       
       return () => clearInterval(refreshInterval);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // fetchPatients uses currentPage and searchTerm which are already in deps
-  }, [router, selectedPatient, currentPage, searchTerm]);
+  }, [router, selectedPatient, currentPage, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchPatients = async (page: number = currentPage, search: string = searchTerm) => {
     try {
@@ -445,28 +443,28 @@ export default function FarmasiPage() {
           <p className={styles.empty}>Tidak ada pasien yang menunggu obat{searchTerm ? ` dengan kata kunci "${searchTerm}"` : ''}</p>
         ) : (
           <>
-            <div className={styles.patientList}>
-              {patients.map((patient) => (
-                <div
-                  key={patient.id}
-                  className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
-                  onClick={() => handleSelectPatient(patient)}
-                >
-                  <div className={styles.patientInfo}>
+          <div className={styles.patientList}>
+            {patients.map((patient) => (
+              <div
+                key={patient.id}
+                className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
+                onClick={() => handleSelectPatient(patient)}
+              >
+                <div className={styles.patientInfo}>
                     {patient.no_registrasi && (
                       <span style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '0.9em', marginBottom: '4px', display: 'block' }}>
                         No. Registrasi: {patient.no_registrasi}
                       </span>
                     )}
-                    <strong>{patient.nama}</strong>
+                  <strong>{patient.nama}</strong>
                     <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
-                    {patient.diagnosa && (
-                      <span className={styles.diagnosa}>Diagnosa: {patient.diagnosa}</span>
-                    )}
-                  </div>
+                  {patient.diagnosa && (
+                    <span className={styles.diagnosa}>Diagnosa: {patient.diagnosa}</span>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', padding: '10px', borderTop: '1px solid #e5e7eb' }}>
                 <div style={{ color: '#6b7280', fontSize: '14px' }}>
@@ -621,9 +619,9 @@ export default function FarmasiPage() {
                       const isEditing = editingResep?.id === item.id;
                       
                       return (
-                        <tr key={item.id}>
-                          <td>{index + 1}</td>
-                          <td>{item.nama_obat}</td>
+                      <tr key={item.id}>
+                        <td>{index + 1}</td>
+                        <td>{item.nama_obat}</td>
                           <td>
                             {isEditing ? (
                               <input
@@ -637,7 +635,7 @@ export default function FarmasiPage() {
                               item.jumlah
                             )}
                           </td>
-                          <td>{item.satuan}</td>
+                        <td>{item.satuan}</td>
                           <td>
                             {isEditing ? (
                               <input
@@ -722,7 +720,7 @@ export default function FarmasiPage() {
                               </div>
                             )}
                           </td>
-                        </tr>
+                      </tr>
                       );
                     })}
                   </tbody>

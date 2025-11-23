@@ -46,7 +46,7 @@ export default function LoginPage() {
         if (!formData.lokasi_id) {
           setDokterList([]);
           return;
-        }
+    }
         
         try {
           setFetchingDokter(true);
@@ -292,26 +292,26 @@ export default function LoginPage() {
             </div>
 
             {formData.lokasi_id && (
-              <div className={styles.formGroup}>
-                <label htmlFor="role">
-                  Pilih Role <span className={styles.required}>*</span>
-                </label>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  required
-                  className={styles.input}
+            <div className={styles.formGroup}>
+              <label htmlFor="role">
+                Pilih Role <span className={styles.required}>*</span>
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                required
+                className={styles.input}
                   disabled={!formData.lokasi_id}
-                >
-                  <option value="">Pilih Role</option>
-                  <option value="admin">Admin Pendaftaran</option>
-                  <option value="perawat">Perawat</option>
-                  <option value="dokter">Dokter</option>
-                  <option value="farmasi">Farmasi</option>
-                </select>
-              </div>
+              >
+                <option value="">Pilih Role</option>
+                <option value="admin">Admin Pendaftaran</option>
+                <option value="perawat">Perawat</option>
+                <option value="dokter">Dokter</option>
+                <option value="farmasi">Farmasi</option>
+              </select>
+            </div>
             )}
 
             {formData.role === 'dokter' && formData.lokasi_id ? (
@@ -375,20 +375,20 @@ export default function LoginPage() {
             )}
 
             {formData.lokasi_id && formData.role && (
-              <div className={styles.formGroup}>
+            <div className={styles.formGroup}>
                 <label htmlFor="tanggal_praktik">
                   Tanggal Praktik <span className={styles.required}>*</span>
-                </label>
-                <input
-                  type="date"
+              </label>
+              <input
+                type="date"
                   id="tanggal_praktik"
                   name="tanggal_praktik"
                   value={formData.tanggal_praktik}
-                  onChange={handleChange}
-                  required
-                  className={styles.input}
-                />
-              </div>
+                onChange={handleChange}
+                required
+                className={styles.input}
+              />
+            </div>
             )}
 
             <div className={styles.formActions}>

@@ -588,25 +588,25 @@ export default function ObatPage() {
                     : null;
                   
                   return (
-                    <tr key={obat.id}>
-                      <td>{index + 1}</td>
-                      <td>{obat.nama_obat}</td>
-                      <td>{obat.satuan}</td>
-                      <td>
-                        <span className={obat.stok > 0 ? styles.stokAvailable : styles.stokEmpty}>
-                          {obat.stok}
-                        </span>
-                      </td>
+                  <tr key={obat.id}>
+                    <td>{index + 1}</td>
+                    <td>{obat.nama_obat}</td>
+                    <td>{obat.satuan}</td>
+                    <td>
+                      <span className={obat.stok > 0 ? styles.stokAvailable : styles.stokEmpty}>
+                        {obat.stok}
+                      </span>
+                    </td>
                       <td>{lokasi ? lokasi.nama_lokasi : '-'}</td>
-                      <td>{obat.keterangan || '-'}</td>
-                      <td>
+                    <td>{obat.keterangan || '-'}</td>
+                    <td>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => handleEdit(obat)}
-                            className={styles.btnEdit}
-                          >
-                            Edit
-                          </button>
+                      <button
+                        onClick={() => handleEdit(obat)}
+                        className={styles.btnEdit}
+                      >
+                        Edit
+                      </button>
                           <button
                             onClick={() => handleDelete(obat.id, obat.nama_obat)}
                             disabled={deleting === obat.id}
@@ -615,8 +615,8 @@ export default function ObatPage() {
                             {deleting === obat.id ? 'Menghapus...' : 'Hapus'}
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                    </td>
+                  </tr>
                   );
                 })}
               </tbody>

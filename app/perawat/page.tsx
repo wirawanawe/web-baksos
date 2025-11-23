@@ -234,29 +234,29 @@ export default function PerawatPage() {
           <p className={styles.empty}>Tidak ada pasien yang menunggu pemeriksaan{searchTerm ? ` dengan kata kunci "${searchTerm}"` : ''}</p>
         ) : (
           <>
-            <div className={styles.patientList}>
-              {patients.map((patient) => (
-                <div
-                  key={patient.id}
-                  className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
-                  onClick={() => handleSelectPatient(patient)}
-                >
-                  <div className={styles.patientInfo}>
+          <div className={styles.patientList}>
+            {patients.map((patient) => (
+              <div
+                key={patient.id}
+                className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
+                onClick={() => handleSelectPatient(patient)}
+              >
+                <div className={styles.patientInfo}>
                     {patient.no_registrasi && (
                       <span style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '0.9em', marginBottom: '4px', display: 'block' }}>
                         No. Registrasi: {patient.no_registrasi}
                       </span>
                     )}
-                    <strong>{patient.nama}</strong>
+                  <strong>{patient.nama}</strong>
                     <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
                     {patient.dokter_pemeriksa && (
                       <span style={{ color: '#666', fontSize: '0.9em' }}>Dokter: {patient.dokter_pemeriksa}</span>
                     )}
-                    <span className={styles.address}>{patient.alamat}</span>
-                  </div>
+                  <span className={styles.address}>{patient.alamat}</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', padding: '10px', borderTop: '1px solid #e5e7eb' }}>
                 <div style={{ color: '#6b7280', fontSize: '14px' }}>

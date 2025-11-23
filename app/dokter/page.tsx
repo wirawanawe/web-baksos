@@ -97,9 +97,7 @@ export default function DokterPage() {
       
       return () => clearInterval(refreshInterval);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // fetchPatients uses currentPage and searchTerm which are already in deps
-  }, [router, selectedPatient, currentPage, searchTerm]);
+  }, [router, selectedPatient, currentPage, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchPatients = async (page: number = currentPage, search: string = searchTerm) => {
     try {
@@ -487,31 +485,31 @@ export default function DokterPage() {
           <p className={styles.empty}>Tidak ada pasien yang menunggu pemeriksaan dokter{searchTerm ? ` dengan kata kunci "${searchTerm}"` : ''}</p>
         ) : (
           <>
-            <div className={styles.patientList}>
-              {patients.map((patient) => (
-                <div
-                  key={patient.id}
-                  className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
-                  onClick={() => handleSelectPatient(patient)}
-                >
-                  <div className={styles.patientInfo}>
+          <div className={styles.patientList}>
+            {patients.map((patient) => (
+              <div
+                key={patient.id}
+                className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
+                onClick={() => handleSelectPatient(patient)}
+              >
+                <div className={styles.patientInfo}>
                     {patient.no_registrasi && (
                       <span style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '0.9em', marginBottom: '4px', display: 'block' }}>
                         No. Registrasi: {patient.no_registrasi}
                       </span>
                     )}
-                    <strong>{patient.nama}</strong>
+                  <strong>{patient.nama}</strong>
                     <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
-                    {patient.keluhan && (
-                      <span className={styles.keluhan}>Keluhan: {patient.keluhan}</span>
-                    )}
-                    {patient.tensi_darah_sistol && patient.tensi_darah_diastol && (
-                      <span>Tensi: {patient.tensi_darah_sistol}/{patient.tensi_darah_diastol} mmHg</span>
-                    )}
-                  </div>
+                  {patient.keluhan && (
+                    <span className={styles.keluhan}>Keluhan: {patient.keluhan}</span>
+                  )}
+                  {patient.tensi_darah_sistol && patient.tensi_darah_diastol && (
+                    <span>Tensi: {patient.tensi_darah_sistol}/{patient.tensi_darah_diastol} mmHg</span>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', padding: '10px', borderTop: '1px solid #e5e7eb' }}>
                 <div style={{ color: '#6b7280', fontSize: '14px' }}>

@@ -22,11 +22,11 @@ export async function POST(request: NextRequest) {
 
     // Drop old patients table if exists (migration to pasien and pemeriksaan)
     try {
-      // Check if patients table exists
+    // Check if patients table exists
       const [oldPatientsTables] = await pool.execute(
-        "SHOW TABLES LIKE 'patients'"
-      ) as any[];
-      
+      "SHOW TABLES LIKE 'patients'"
+    ) as any[];
+
       if (oldPatientsTables.length > 0) {
         // Drop foreign key constraints from resep_detail if it references patients
         try {
@@ -47,13 +47,13 @@ export async function POST(request: NextRequest) {
     // Create pasien table
     const createPasienTableQuery = `
       CREATE TABLE IF NOT EXISTS pasien (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        nama VARCHAR(255) NOT NULL,
-        no_ktp VARCHAR(20),
-        no_telepon VARCHAR(20),
-        jenis_kelamin ENUM('L', 'P') NOT NULL,
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          nama VARCHAR(255) NOT NULL,
+          no_ktp VARCHAR(20),
+          no_telepon VARCHAR(20),
+          jenis_kelamin ENUM('L', 'P') NOT NULL,
         tanggal_lahir DATE NOT NULL,
-        alamat TEXT NOT NULL,
+          alamat TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY uk_no_ktp (no_ktp),
@@ -71,38 +71,38 @@ export async function POST(request: NextRequest) {
         id INT AUTO_INCREMENT PRIMARY KEY,
         pasien_id INT NOT NULL,
         tanggal_pemeriksaan DATE,
-        tinggi_badan DECIMAL(5,2),
-        berat_badan DECIMAL(5,2),
-        tensi_darah_sistol INT,
-        tensi_darah_diastol INT,
-        kolesterol DECIMAL(5,2),
-        gds DECIMAL(5,2),
-        as_urat DECIMAL(5,2),
-        keluhan TEXT,
-        anamnesa TEXT,
-        pemeriksaan_fisik TEXT,
-        hpht DATE,
-        hpl DATE,
-        tfu DECIMAL(5,2),
-        djj_anak INT,
-        diagnosa TEXT,
-        terapi TEXT,
-        resep TEXT,
-        dokter_pemeriksa VARCHAR(255),
+          tinggi_badan DECIMAL(5,2),
+          berat_badan DECIMAL(5,2),
+          tensi_darah_sistol INT,
+          tensi_darah_diastol INT,
+          kolesterol DECIMAL(5,2),
+          gds DECIMAL(5,2),
+          as_urat DECIMAL(5,2),
+          keluhan TEXT,
+          anamnesa TEXT,
+          pemeriksaan_fisik TEXT,
+          hpht DATE,
+          hpl DATE,
+          tfu DECIMAL(5,2),
+          djj_anak INT,
+          diagnosa TEXT,
+          terapi TEXT,
+          resep TEXT,
+          dokter_pemeriksa VARCHAR(255),
         lokasi_id INT,
         status ENUM('pendaftaran', 'perawat', 'dokter', 'farmasi', 'selesai', 'dibatalkan') DEFAULT 'pendaftaran',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (pasien_id) REFERENCES pasien(id) ON DELETE CASCADE,
         FOREIGN KEY (lokasi_id) REFERENCES lokasi(id) ON DELETE SET NULL,
         INDEX idx_pasien_id (pasien_id),
         INDEX idx_tanggal_pemeriksaan (tanggal_pemeriksaan),
         INDEX idx_status (status),
-        INDEX idx_created_at (created_at),
+          INDEX idx_created_at (created_at),
         INDEX idx_dokter_pemeriksa (dokter_pemeriksa),
         INDEX idx_lokasi_id (lokasi_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `;
     await pool.execute(createPemeriksaanTableQuery);
 
     // Check if lokasi table exists, if not create it first
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       const [lokasiTables] = await pool.execute(
         "SHOW TABLES LIKE 'lokasi'"
       ) as any[];
-      
+
       if (lokasiTables.length === 0) {
         // Create lokasi table first
         const createLokasiTableQuery = `
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error('Error checking/creating lokasi table:', error);
       // Continue with other table creation
-    }
+      }
 
     // Check if pemeriksaan table needs migration (add lokasi_id column)
     try {
@@ -146,8 +146,8 @@ export async function POST(request: NextRequest) {
         // First create lokasi table if it doesn't exist
         const [lokasiTables] = await pool.execute(
           "SHOW TABLES LIKE 'lokasi'"
-        ) as any[];
-        
+          ) as any[];
+
         if (lokasiTables.length === 0) {
           const createLokasiTableQuery = `
             CREATE TABLE IF NOT EXISTS lokasi (
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
         `);
         
         console.log('Migration completed: lokasi_id column added to pemeriksaan table');
-      }
+          }
     } catch (error: any) {
       console.error('Error migrating pemeriksaan table:', error);
       // Continue even if migration fails

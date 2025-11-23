@@ -250,28 +250,28 @@ export async function POST(request: NextRequest) {
     
     const insertValues = [
       pasienId,
-      tanggal_pemeriksaan || null,
-      tinggi_badan || null,
-      berat_badan || null,
-      tensi_darah_sistol || null,
-      tensi_darah_diastol || null,
-      kolesterol || null,
-      gds || null,
-      as_urat || null,
-      keluhan || null,
-      anamnesa || null,
-      pemeriksaan_fisik || null,
-      hpht || null,
-      hpl || null,
-      tfu || null,
-      djj_anak || null,
-      diagnosa || null,
+        tanggal_pemeriksaan || null,
+        tinggi_badan || null,
+        berat_badan || null,
+        tensi_darah_sistol || null,
+        tensi_darah_diastol || null,
+        kolesterol || null,
+        gds || null,
+        as_urat || null,
+        keluhan || null,
+        anamnesa || null,
+        pemeriksaan_fisik || null,
+        hpht || null,
+        hpl || null,
+        tfu || null,
+        djj_anak || null,
+        diagnosa || null,
       alergi || null,
-      terapi || null,
-      resep || null,
-      dokter_pemeriksa || null,
+        terapi || null,
+        resep || null,
+        dokter_pemeriksa || null,
       lokasi_id || null,
-      status || 'pendaftaran',
+        status || 'pendaftaran',
     ];
     
     if (noRegistrasiColumnExists && noRegistrasi) {
@@ -458,6 +458,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const status = searchParams.get('status');
+    const jenis_kelamin = searchParams.get('jenis_kelamin');
     const dokter_pemeriksa = searchParams.get('dokter_pemeriksa');
     const dokter_id = searchParams.get('dokter_id');
     const lokasi_id = searchParams.get('lokasi_id');
@@ -537,6 +538,11 @@ export async function GET(request: NextRequest) {
     if (status) {
       conditions.push('pm.status = ?');
       params.push(status);
+    }
+
+    if (jenis_kelamin) {
+      conditions.push('p.jenis_kelamin = ?');
+      params.push(jenis_kelamin);
     }
 
     if (dokter_pemeriksa) {
@@ -624,6 +630,10 @@ export async function GET(request: NextRequest) {
       countConditions.push('pm.status = ?');
       countParams.push(status);
     }
+    if (jenis_kelamin) {
+      countConditions.push('p.jenis_kelamin = ?');
+      countParams.push(jenis_kelamin);
+    }
     if (dokter_pemeriksa) {
       const searchName = dokter_pemeriksa.trim();
       const cleanName = searchName.replace(/^Dr\.\s*/i, '').replace(/,\s*Sp\.[A-Z]+$/i, '').trim();
@@ -635,9 +645,14 @@ export async function GET(request: NextRequest) {
       countParams.push(filterLokasiId);
     }
     if (search) {
-      countConditions.push('(p.nama LIKE ? OR p.no_ktp LIKE ? OR p.no_telepon LIKE ?)');
       const searchPattern = `%${search}%`;
-      countParams.push(searchPattern, searchPattern, searchPattern);
+      if (noRegistrasiColumnExists) {
+        countConditions.push('(p.nama LIKE ? OR p.no_ktp LIKE ? OR p.no_telepon LIKE ? OR pm.no_registrasi LIKE ?)');
+        countParams.push(searchPattern, searchPattern, searchPattern, searchPattern);
+      } else {
+        countConditions.push('(p.nama LIKE ? OR p.no_ktp LIKE ? OR p.no_telepon LIKE ?)');
+        countParams.push(searchPattern, searchPattern, searchPattern);
+      }
     }
     
     if (countConditions.length > 0) {
@@ -673,7 +688,7 @@ export async function GET(request: NextRequest) {
     console.log('Count Params:', countParams);
 
     const [rows] = await pool.execute(query, params);
-    
+
     console.log('Query result count:', Array.isArray(rows) ? rows.length : 0);
     if (Array.isArray(rows) && rows.length > 0) {
       console.log('Sample result:', rows[0]);

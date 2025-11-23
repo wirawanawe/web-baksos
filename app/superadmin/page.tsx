@@ -541,6 +541,12 @@ export default function SuperadminPage() {
         >
           Data Obat
         </button>
+        <button
+          className={styles.tab}
+          onClick={() => router.push('/rekapitulasi')}
+        >
+          Rekapitulasi
+        </button>
       </div>
 
       {/* Tab Content - Lokasi */}

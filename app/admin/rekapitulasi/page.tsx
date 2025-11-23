@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { formatAge } from '@/lib/formatAge';
-import styles from './page.module.css';
+import styles from '../../rekapitulasi/page.module.css';
 
 interface Patient {
   id: number;
@@ -49,7 +49,7 @@ interface ResepDetail {
   satuan: string;
 }
 
-export default function RekapitulasiPage() {
+export default function AdminRekapitulasiPage() {
   const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,11 +67,8 @@ export default function RekapitulasiPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterJenisKelamin, setFilterJenisKelamin] = useState('');
   const [filterDokter, setFilterDokter] = useState('');
-  const [filterLokasi, setFilterLokasi] = useState('');
   const [dokterList, setDokterList] = useState<{ nama_dokter: string }[]>([]);
-  const [lokasiList, setLokasiList] = useState<{ id: number; nama_lokasi: string }[]>([]);
   const [fetchingDokter, setFetchingDokter] = useState(false);
-  const [fetchingLokasi, setFetchingLokasi] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('user_role');
@@ -80,6 +77,8 @@ export default function RekapitulasiPage() {
     localStorage.removeItem('tanggal_pemeriksaan');
     localStorage.removeItem('tanggal_praktik');
     localStorage.removeItem('dokter_id');
+    localStorage.removeItem('lokasi_id');
+    localStorage.removeItem('lokasi_nama');
     router.push('/login');
   };
 
@@ -89,6 +88,12 @@ export default function RekapitulasiPage() {
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('limit', itemsPerPage.toString());
+      
+      // Always filter by lokasi_id for admin
+      const lokasiId = localStorage.getItem('lokasi_id');
+      if (lokasiId) {
+        params.append('lokasi_id', lokasiId);
+      }
       
       if (startDate && endDate) {
         params.append('startDate', startDate);
@@ -106,9 +111,6 @@ export default function RekapitulasiPage() {
       if (filterDokter) {
         params.append('dokter_pemeriksa', filterDokter);
       }
-      if (filterLokasi) {
-        params.append('lokasi_id', filterLokasi);
-      }
       
       const response = await fetch(`/api/patients?${params.toString()}`);
       const result = await response.json();
@@ -125,9 +127,9 @@ export default function RekapitulasiPage() {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, currentPage, itemsPerPage, searchTerm, filterStatus, filterJenisKelamin, filterDokter, filterLokasi]);
+  }, [startDate, endDate, currentPage, itemsPerPage, searchTerm, filterStatus, filterJenisKelamin, filterDokter]);
 
-  // Fetch unique doctors and locations for filter
+  // Fetch unique doctors for filter
   useEffect(() => {
     const fetchDokterList = async () => {
       try {
@@ -143,24 +145,7 @@ export default function RekapitulasiPage() {
         setFetchingDokter(false);
       }
     };
-    
-    const fetchLokasiList = async () => {
-      try {
-        setFetchingLokasi(true);
-        const response = await fetch('/api/lokasi');
-        const result = await response.json();
-        if (result.success && result.data) {
-          setLokasiList(result.data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching lokasi list:', error);
-      } finally {
-        setFetchingLokasi(false);
-      }
-    };
-    
     fetchDokterList();
-    fetchLokasiList();
   }, []);
 
   // Debounce search
@@ -174,7 +159,7 @@ export default function RekapitulasiPage() {
 
   useEffect(() => {
     fetchPatients(currentPage);
-  }, [startDate, endDate, currentPage, filterStatus, filterJenisKelamin, filterDokter, filterLokasi, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, currentPage, filterStatus, filterJenisKelamin, filterDokter, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFilter = () => {
     setCurrentPage(1);
@@ -186,7 +171,6 @@ export default function RekapitulasiPage() {
     setFilterStatus('');
     setFilterJenisKelamin('');
     setFilterDokter('');
-    setFilterLokasi('');
     setCurrentPage(1);
   };
 
@@ -202,9 +186,10 @@ export default function RekapitulasiPage() {
       setExporting(true);
       const params = new URLSearchParams();
       
-      // Filter by lokasi_id for superadmin (if filter selected)
-      if (filterLokasi) {
-        params.append('lokasi_id', filterLokasi);
+      // Always filter by lokasi_id for admin
+      const lokasiId = localStorage.getItem('lokasi_id');
+      if (lokasiId) {
+        params.append('lokasi_id', lokasiId);
       }
       
       if (startDate && endDate) {
@@ -284,10 +269,10 @@ export default function RekapitulasiPage() {
         <h1 className={styles.title}>Rekapitulasi Data Pasien</h1>
         <div className={styles.pageHeaderActions}>
           <button 
-            onClick={() => router.push('/superadmin')}
+            onClick={() => router.push('/admin')}
             className={styles.btnSecondary}
           >
-            Kembali ke Superadmin
+            Kembali ke Form
           </button>
           <button 
             onClick={handleLogout}
@@ -372,26 +357,6 @@ export default function RekapitulasiPage() {
               {dokterList.map((dokter, index) => (
                 <option key={index} value={dokter.nama_dokter}>
                   {dokter.nama_dokter}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className={styles.filterGroup}>
-            <label htmlFor="filterLokasi">Lokasi</label>
-            <select
-              id="filterLokasi"
-              value={filterLokasi}
-              onChange={(e) => {
-                setFilterLokasi(e.target.value);
-                setCurrentPage(1);
-              }}
-              className={styles.input}
-              disabled={fetchingLokasi}
-            >
-              <option value="">Semua Lokasi</option>
-              {lokasiList.map((lokasi) => (
-                <option key={lokasi.id} value={lokasi.id.toString()}>
-                  {lokasi.nama_lokasi}
                 </option>
               ))}
             </select>

@@ -53,7 +53,7 @@ export default function Header() {
         { label: 'Pendaftaran', path: '/admin' },
         { label: 'Data Obat', path: '/admin/obat' },
         { label: 'Data Dokter', path: '/admin/dokter' },
-        { label: 'Rekapitulasi', path: '/rekapitulasi' },
+        { label: 'Rekapitulasi', path: '/admin/rekapitulasi' },
       ],
       perawat: [
         { label: 'Pemeriksaan', path: '/perawat' },

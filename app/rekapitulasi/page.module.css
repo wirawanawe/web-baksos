@@ -73,6 +73,12 @@
   margin-bottom: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterRow {
+  display: flex;
   gap: 16px;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -114,6 +120,7 @@
 }
 
 .btnFilter,
+.btnReset,
 .btnExport {
   padding: 12px 24px;
   border: none;
@@ -133,6 +140,17 @@
 
 .btnFilter:hover {
   background: #e5e7eb;
+}
+
+.btnReset {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 2px solid #fca5a5;
+}
+
+.btnReset:hover {
+  background: #fecaca;
+  border-color: #f87171;
 }
 
 .btnExport {
@@ -539,6 +557,49 @@
   border-bottom: none;
 }
 
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.paginationBtn {
+  padding: 10px 20px;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+  color: #667eea;
+}
+
+.paginationBtn:hover:not(:disabled) {
+  background: #667eea;
+  color: white;
+}
+
+.paginationBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+}
+
+.paginationInfo {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
 .footer {
   text-align: center;
   padding: 24px 20px;
@@ -550,5 +611,44 @@
 .footer p {
   margin: 0;
   opacity: 0.9;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.statusPendaftaran {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.statusPerawat {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.statusDokter {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.statusFarmasi {
+  background-color: #fce7f3;
+  color: #9f1239;
+}
+
+.statusSelesai {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.statusDibatalkan {
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 

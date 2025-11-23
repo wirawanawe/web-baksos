@@ -271,7 +271,7 @@ export async function PUT(
       updates.push('status = ?');
       values.push(status);
     }
-    
+
     // Auto-unlock when status changes or data is saved
     // Check if locked_by column exists
     let lockedByColumnExists = false;

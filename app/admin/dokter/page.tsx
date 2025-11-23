@@ -658,27 +658,27 @@ export default function DokterPage() {
                     : null;
                   
                   return (
-                    <tr key={dokter.id}>
-                      <td>{index + 1}</td>
-                      <td>{dokter.nama_dokter}</td>
-                      <td>{dokter.spesialisasi || '-'}</td>
-                      <td>{dokter.no_sip || '-'}</td>
-                      <td>{dokter.no_telp || '-'}</td>
-                      <td>{dokter.email || '-'}</td>
+                  <tr key={dokter.id}>
+                    <td>{index + 1}</td>
+                    <td>{dokter.nama_dokter}</td>
+                    <td>{dokter.spesialisasi || '-'}</td>
+                    <td>{dokter.no_sip || '-'}</td>
+                    <td>{dokter.no_telp || '-'}</td>
+                    <td>{dokter.email || '-'}</td>
                       <td>{lokasi ? lokasi.nama_lokasi : '-'}</td>
-                      <td>
-                        <span className={dokter.aktif === 'Y' ? styles.statusActive : styles.statusInactive}>
-                          {dokter.aktif === 'Y' ? 'Aktif' : 'Tidak Aktif'}
-                        </span>
-                      </td>
-                      <td>
+                    <td>
+                      <span className={dokter.aktif === 'Y' ? styles.statusActive : styles.statusInactive}>
+                        {dokter.aktif === 'Y' ? 'Aktif' : 'Tidak Aktif'}
+                      </span>
+                    </td>
+                    <td>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => handleEdit(dokter)}
-                            className={styles.btnEdit}
-                          >
-                            Edit
-                          </button>
+                      <button
+                        onClick={() => handleEdit(dokter)}
+                        className={styles.btnEdit}
+                      >
+                        Edit
+                      </button>
                           <button
                             onClick={() => handleDelete(dokter.id, dokter.nama_dokter)}
                             disabled={deleting === dokter.id}
@@ -687,8 +687,8 @@ export default function DokterPage() {
                             {deleting === dokter.id ? 'Menghapus...' : 'Hapus'}
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                    </td>
+                  </tr>
                   );
                 })}
               </tbody>
