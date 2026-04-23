@@ -15,7 +15,14 @@ interface Patient {
   jenis_kelamin: string;
   usia: number;
   tanggal_lahir?: string;
+  tempat_lahir?: string | null;
+  jabatan?: string | null;
+  unit?: string | null;
   alamat: string;
+  email?: string | null;
+  lokasi_penugasan?: string | null;
+  tanggal_mulai_tugas?: string | null;
+  durasi_penugasan?: string | null;
   dokter_pemeriksa: string | null;
   status: string;
   tanggal_pemeriksaan: string | null;
@@ -42,7 +49,14 @@ export default function AdminPage() {
     no_telepon: '',
     jenis_kelamin: '',
     tanggal_lahir: '',
+    tempat_lahir: '',
+    jabatan: '',
+    unit: '',
     alamat: '',
+    email: '',
+    lokasi_penugasan: '',
+    tanggal_mulai_tugas: '',
+    durasi_penugasan: '',
   });
 
   // Fungsi untuk menghitung usia dari tanggal lahir
@@ -238,7 +252,14 @@ export default function AdminPage() {
           no_telepon: '',
           jenis_kelamin: '',
           tanggal_lahir: '',
+          tempat_lahir: '',
+          jabatan: '',
+          unit: '',
           alamat: '',
+          email: '',
+          lokasi_penugasan: '',
+          tanggal_mulai_tugas: '',
+          durasi_penugasan: '',
         });
         // Refresh daftar pasien
         fetchPatients(currentPage, searchTerm);
@@ -269,7 +290,7 @@ export default function AdminPage() {
           <h2 className={styles.sectionTitle}>PENDAFTARAN PASIEN</h2>
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
-              <label htmlFor="nama">Nama <span className={styles.required}>*</span></label>
+              <label htmlFor="nama">Nama Lengkap <span className={styles.required}>*</span></label>
               <input
                 type="text"
                 id="nama"
@@ -278,11 +299,12 @@ export default function AdminPage() {
                 onChange={handleChange}
                 required
                 className={styles.input}
+                placeholder="Masukkan Nama Lengkap"
               />
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="no_ktp">No. KTP</label>
+              <label htmlFor="no_ktp">NIK / ID Pegawai</label>
               <input
                 type="text"
                 id="no_ktp"
@@ -290,21 +312,48 @@ export default function AdminPage() {
                 value={formData.no_ktp}
                 onChange={handleChange}
                 className={styles.input}
-                placeholder="Masukkan No. KTP"
+                placeholder="Masukkan NIK atau ID Pegawai"
               />
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="no_telepon">No. Telepon</label>
+              <label htmlFor="tempat_lahir">Tempat Lahir</label>
               <input
                 type="text"
-                id="no_telepon"
-                name="no_telepon"
-                value={formData.no_telepon}
+                id="tempat_lahir"
+                name="tempat_lahir"
+                value={formData.tempat_lahir}
                 onChange={handleChange}
                 className={styles.input}
-                placeholder="Masukkan No. Telepon"
+                placeholder="Masukkan Tempat Lahir"
               />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="tanggal_lahir">Tanggal Lahir <span className={styles.required}>*</span></label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input
+                    type="date"
+                    id="tanggal_lahir"
+                    name="tanggal_lahir"
+                    value={formData.tanggal_lahir}
+                    onChange={handleChange}
+                    required
+                    max={new Date().toISOString().split('T')[0]}
+                    className={styles.input}
+                    style={{ flex: 1 }}
+                />
+                {usia !== null && (
+                  <span style={{ 
+                    fontSize: '14px', 
+                    color: '#666', 
+                    fontWeight: '500',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {formatAge(usia, formData.tanggal_lahir)}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className={styles.formGroup}>
@@ -317,41 +366,104 @@ export default function AdminPage() {
                 required
                 className={styles.input}
               >
-                <option value="">Pilih</option>
+                <option value="">Pilih Jenis Kelamin</option>
                 <option value="L">Laki-laki (L)</option>
                 <option value="P">Perempuan (P)</option>
               </select>
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="tanggal_lahir">Tanggal Lahir <span className={styles.required}>*</span></label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label htmlFor="no_telepon">No. Telepon / HP</label>
               <input
-                  type="date"
-                  id="tanggal_lahir"
-                  name="tanggal_lahir"
-                  value={formData.tanggal_lahir}
+                type="text"
+                id="no_telepon"
+                name="no_telepon"
+                value={formData.no_telepon}
                 onChange={handleChange}
-                required
-                  max={new Date().toISOString().split('T')[0]}
                 className={styles.input}
-                  style={{ flex: 1 }}
+                placeholder="Contoh: 081234567890"
               />
-                {usia !== null && (
-                  <span style={{ 
-                    fontSize: '14px', 
-                    color: '#666', 
-                    fontWeight: '500',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Usia: {formatAge(usia, formData.tanggal_lahir)}
-                  </span>
-                )}
-              </div>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className={styles.input}
+                placeholder="Masukkan Alamat Email"
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="jabatan">Jabatan / Posisi</label>
+              <input
+                type="text"
+                id="jabatan"
+                name="jabatan"
+                value={formData.jabatan}
+                onChange={handleChange}
+                className={styles.input}
+                placeholder="Masukkan Jabatan atau Posisi"
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="unit">Unit / Departemen</label>
+              <input
+                type="text"
+                id="unit"
+                name="unit"
+                value={formData.unit}
+                onChange={handleChange}
+                className={styles.input}
+                placeholder="Masukkan Unit atau Departemen"
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="lokasi_penugasan">Lokasi Penugasan (Daerah Endemis Malaria)</label>
+              <input
+                type="text"
+                id="lokasi_penugasan"
+                name="lokasi_penugasan"
+                value={formData.lokasi_penugasan}
+                onChange={handleChange}
+                className={styles.input}
+                placeholder="Masukkan Lokasi Penugasan"
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="tanggal_mulai_tugas">Tanggal Mulai Tugas</label>
+              <input
+                type="date"
+                id="tanggal_mulai_tugas"
+                name="tanggal_mulai_tugas"
+                value={formData.tanggal_mulai_tugas}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="durasi_penugasan">Durasi Penugasan</label>
+              <input
+                type="text"
+                id="durasi_penugasan"
+                name="durasi_penugasan"
+                value={formData.durasi_penugasan}
+                onChange={handleChange}
+                className={styles.input}
+                placeholder="Contoh: 6 Bulan atau 1 Tahun"
+              />
             </div>
 
             <div className={styles.formGroupFull}>
-              <label htmlFor="alamat">Alamat <span className={styles.required}>*</span></label>
+              <label htmlFor="alamat">Alamat Domisili <span className={styles.required}>*</span></label>
               <textarea
                 id="alamat"
                 name="alamat"
@@ -360,6 +472,7 @@ export default function AdminPage() {
                 required
                 rows={3}
                 className={styles.textarea}
+                placeholder="Masukkan Alamat Lengkap Sesuai Domisili"
               />
             </div>
           </div>
@@ -382,7 +495,14 @@ export default function AdminPage() {
                 no_telepon: '',
                 jenis_kelamin: '',
                 tanggal_lahir: '',
+                tempat_lahir: '',
+                jabatan: '',
+                unit: '',
                 alamat: '',
+                email: '',
+                lokasi_penugasan: '',
+                tanggal_mulai_tugas: '',
+                durasi_penugasan: '',
               });
               setMessage(null);
             }}
@@ -536,7 +656,7 @@ export default function AdminPage() {
       </div>
 
       <div className={styles.footer}>
-        <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>
+        <p>Copyright © {new Date().getFullYear()} PT Doctor PHC Indonesia. All rights reserved.</p>
       </div>
     </div>
   );

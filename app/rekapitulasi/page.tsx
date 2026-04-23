@@ -23,6 +23,9 @@ interface Patient {
   kolesterol: number | null;
   gds: number | null;
   as_urat: number | null;
+  denyut_nadi: number | null;
+  suhu_tubuh: number | null;
+  laju_pernapasan: number | null;
   keluhan: string | null;
   anamnesa: string | null;
   pemeriksaan_fisik: string | null;
@@ -30,9 +33,33 @@ interface Patient {
   hpl: string | null;
   tfu: number | null;
   djj_anak: number | null;
-  diagnosa: string | null;
   alergi: string | null;
-  terapi: string | null;
+  riwayat_malaria: string | null;
+  riwayat_malaria_ket: string | null;
+  riwayat_kronis: string | null;
+  riwayat_kronis_ket: string | null;
+  riwayat_rawat_inap: string | null;
+  riwayat_rawat_inap_ket: string | null;
+  riwayat_alergi_obat: string | null;
+  riwayat_alergi_obat_ket: string | null;
+  riwayat_merokok: string | null;
+  riwayat_merokok_ket: string | null;
+  riwayat_alkohol: string | null;
+  riwayat_alkohol_ket: string | null;
+  riwayat_obat_rutin: string | null;
+  riwayat_obat_rutin_ket: string | null;
+  catatan_khusus: string | null;
+  fisik_keadaan_umum: string | null;
+  fisik_keadaan_umum_ket: string | null;
+  fisik_kepala_leher: string | null;
+  fisik_jantung: string | null;
+  fisik_paru: string | null;
+  fisik_abdomen: string | null;
+  fisik_ekstremitas: string | null;
+  fisik_kulit: string | null;
+  fisik_lain_lain: string | null;
+  kesimpulan_kelayakan: string | null;
+  saran_medis: string | null;
   resep: string | null;
   dokter_pemeriksa: string | null;
   status: string;
@@ -89,7 +116,7 @@ export default function RekapitulasiPage() {
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('limit', itemsPerPage.toString());
-      
+
       if (startDate && endDate) {
         params.append('startDate', startDate);
         params.append('endDate', endDate);
@@ -109,10 +136,10 @@ export default function RekapitulasiPage() {
       if (filterLokasi) {
         params.append('lokasi_id', filterLokasi);
       }
-      
+
       const response = await fetch(`/api/patients?${params.toString()}`);
       const result = await response.json();
-      
+
       if (result.success) {
         setPatients(result.data || []);
         if (result.pagination) {
@@ -143,7 +170,7 @@ export default function RekapitulasiPage() {
         setFetchingDokter(false);
       }
     };
-    
+
     const fetchLokasiList = async () => {
       try {
         setFetchingLokasi(true);
@@ -158,7 +185,7 @@ export default function RekapitulasiPage() {
         setFetchingLokasi(false);
       }
     };
-    
+
     fetchDokterList();
     fetchLokasiList();
   }, []);
@@ -201,12 +228,12 @@ export default function RekapitulasiPage() {
     try {
       setExporting(true);
       const params = new URLSearchParams();
-      
+
       // Filter by lokasi_id for superadmin (if filter selected)
       if (filterLokasi) {
         params.append('lokasi_id', filterLokasi);
       }
-      
+
       if (startDate && endDate) {
         params.append('startDate', startDate);
         params.append('endDate', endDate);
@@ -223,10 +250,10 @@ export default function RekapitulasiPage() {
       if (filterDokter) {
         params.append('dokter_pemeriksa', filterDokter);
       }
-      
+
       const response = await fetch(`/api/patients/export?${params.toString()}`);
       const blob = await response.blob();
-      
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -280,7 +307,7 @@ export default function RekapitulasiPage() {
   return (
     <div className={styles.container}>
       <Header />
-      <div className={styles.pageHeader}>
+      {/* <div className={styles.pageHeader}>
         <h1 className={styles.title}>Rekapitulasi Data Pasien</h1>
         <div className={styles.pageHeaderActions}>
           <button 
@@ -296,7 +323,7 @@ export default function RekapitulasiPage() {
             Keluar
           </button>
         </div>
-      </div>
+      </div> */}
 
       <div className={styles.filters}>
         <div className={styles.filterRow}>
@@ -442,17 +469,19 @@ export default function RekapitulasiPage() {
               <thead>
                 <tr>
                   <th>No</th>
-                  <th>Tanggal Pemeriksaan</th>
+                  <th>Tgl Pemeriksaan</th>
                   <th>Nama</th>
                   <th>JK</th>
                   <th>Usia</th>
                   <th>Alamat</th>
                   <th>TB/BB</th>
                   <th>Tensi</th>
-                  <th>Diagnosa</th>
+                  <th>Nadi</th>
+                  <th>Napas</th>
+                  <th>Suhu</th>
+                  <th>Kelayakan</th>
                   <th>Dokter</th>
                   <th>Status</th>
-                  <th>Tanggal Input</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
@@ -461,7 +490,7 @@ export default function RekapitulasiPage() {
                   <tr key={patient.id}>
                     <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
                     <td className={styles.cellDate}>
-                      {patient.tanggal_pemeriksaan 
+                      {patient.tanggal_pemeriksaan
                         ? new Date(patient.tanggal_pemeriksaan).toLocaleDateString('id-ID')
                         : '-'}
                     </td>
@@ -479,20 +508,22 @@ export default function RekapitulasiPage() {
                         ? `${patient.tensi_darah_sistol}/${patient.tensi_darah_diastol}`
                         : '-'}
                     </td>
-                    <td className={styles.cellText}>{patient.diagnosa || '-'}</td>
+                    <td>{patient.denyut_nadi || '-'}</td>
+                    <td>{patient.laju_pernapasan || '-'}</td>
+                    <td>{patient.suhu_tubuh ? `${patient.suhu_tubuh}°C` : '-'}</td>
+                    <td className={styles.cellText}>{patient.kesimpulan_kelayakan || '-'}</td>
                     <td>{patient.dokter_pemeriksa || '-'}</td>
                     <td>
                       <span className={`${styles.statusBadge} ${styles[`status${patient.status?.charAt(0).toUpperCase() + patient.status?.slice(1)}`] || ''}`}>
                         {patient.status === 'pendaftaran' ? 'Pendaftaran' :
-                         patient.status === 'perawat' ? 'Perawat' :
-                         patient.status === 'dokter' ? 'Dokter' :
-                         patient.status === 'farmasi' ? 'Farmasi' :
-                         patient.status === 'selesai' ? 'Selesai' :
-                         patient.status === 'dibatalkan' ? 'Dibatalkan' :
-                         patient.status || '-'}
+                          patient.status === 'perawat' ? 'Perawat' :
+                            patient.status === 'dokter' ? 'Dokter' :
+                              patient.status === 'farmasi' ? 'Farmasi' :
+                                patient.status === 'selesai' ? 'Selesai' :
+                                  patient.status === 'dibatalkan' ? 'Dibatalkan' :
+                                    patient.status || '-'}
                       </span>
                     </td>
-                    <td className={styles.cellDate}>{formatDate(patient.created_at)}</td>
                     <td>
                       <button
                         onClick={() => handleViewDetail(patient)}
@@ -506,7 +537,7 @@ export default function RekapitulasiPage() {
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination */}
           {totalPages > 1 && (
             <div className={styles.pagination}>
@@ -540,7 +571,7 @@ export default function RekapitulasiPage() {
               <h2>Detail Pemeriksaan Pasien</h2>
               <button onClick={handleCloseDetail} className={styles.modalClose}>×</button>
             </div>
-            
+
             <div className={styles.modalBody}>
               {/* Data Pasien */}
               <section className={styles.detailSection}>
@@ -573,7 +604,7 @@ export default function RekapitulasiPage() {
                   <div className={styles.detailItem}>
                     <label>Tanggal Pemeriksaan:</label>
                     <span>
-                      {selectedPatient.tanggal_pemeriksaan 
+                      {selectedPatient.tanggal_pemeriksaan
                         ? new Date(selectedPatient.tanggal_pemeriksaan).toLocaleDateString('id-ID')
                         : '-'}
                     </span>
@@ -606,16 +637,16 @@ export default function RekapitulasiPage() {
                     </span>
                   </div>
                   <div className={styles.detailItem}>
-                    <label>Kolesterol:</label>
-                    <span>{selectedPatient.kolesterol ? `${selectedPatient.kolesterol} mg/dL` : '-'}</span>
+                    <label>Denyut Nadi:</label>
+                    <span>{selectedPatient.denyut_nadi ? `${selectedPatient.denyut_nadi} bpm` : '-'}</span>
                   </div>
                   <div className={styles.detailItem}>
-                    <label>GDS:</label>
-                    <span>{selectedPatient.gds ? `${selectedPatient.gds} mg/dL` : '-'}</span>
+                    <label>Laju Pernapasan:</label>
+                    <span>{selectedPatient.laju_pernapasan ? `${selectedPatient.laju_pernapasan} x/menit` : '-'}</span>
                   </div>
                   <div className={styles.detailItem}>
-                    <label>As Urat:</label>
-                    <span>{selectedPatient.as_urat ? `${selectedPatient.as_urat} mg/dL` : '-'}</span>
+                    <label>Suhu Tubuh:</label>
+                    <span>{selectedPatient.suhu_tubuh ? `${selectedPatient.suhu_tubuh} °C` : '-'}</span>
                   </div>
                   {selectedPatient.keluhan && (
                     <div className={styles.detailItemFull}>
@@ -625,7 +656,6 @@ export default function RekapitulasiPage() {
                   )}
                 </div>
               </section>
-
               {/* Data Pemeriksaan Dokter */}
               <section className={styles.detailSection}>
                 <h3>Data Pemeriksaan Dokter</h3>
@@ -634,46 +664,16 @@ export default function RekapitulasiPage() {
                     <label>Dokter Pemeriksa:</label>
                     <span>{selectedPatient.dokter_pemeriksa || '-'}</span>
                   </div>
-                  {selectedPatient.anamnesa && (
+                  <div className={styles.detailItem}>
+                    <label>Kesimpulan Kelayakan:</label>
+                    <span style={{ fontWeight: 'bold', fontSize: '30px', color: selectedPatient.kesimpulan_kelayakan === 'UNFIT' ? '#ef4444' : selectedPatient.kesimpulan_kelayakan === 'FIT WITH NOTE' ? '#f59e0b' : '#10b981' }}>
+                      {selectedPatient.kesimpulan_kelayakan || '-'}
+                    </span>
+                  </div>
+                  {selectedPatient.saran_medis && (
                     <div className={styles.detailItemFull}>
-                      <label>Anamnesa:</label>
-                      <span>{selectedPatient.anamnesa}</span>
-                    </div>
-                  )}
-                  {selectedPatient.pemeriksaan_fisik && (
-                    <div className={styles.detailItemFull}>
-                      <label>Pemeriksaan Fisik:</label>
-                      <span>{selectedPatient.pemeriksaan_fisik}</span>
-                    </div>
-                  )}
-                  {selectedPatient.hpht && (
-                    <div className={styles.detailItem}>
-                      <label>HPHT:</label>
-                      <span>{new Date(selectedPatient.hpht).toLocaleDateString('id-ID')}</span>
-                    </div>
-                  )}
-                  {selectedPatient.hpl && (
-                    <div className={styles.detailItem}>
-                      <label>HPL:</label>
-                      <span>{new Date(selectedPatient.hpl).toLocaleDateString('id-ID')}</span>
-                    </div>
-                  )}
-                  {selectedPatient.tfu !== null && (
-                    <div className={styles.detailItem}>
-                      <label>TFU:</label>
-                      <span>{selectedPatient.tfu} cm</span>
-                    </div>
-                  )}
-                  {selectedPatient.djj_anak !== null && (
-                    <div className={styles.detailItem}>
-                      <label>DJJ Anak:</label>
-                      <span>{selectedPatient.djj_anak}</span>
-                    </div>
-                  )}
-                  {selectedPatient.diagnosa && (
-                    <div className={styles.detailItemFull}>
-                      <label>Diagnosa:</label>
-                      <span>{selectedPatient.diagnosa}</span>
+                      <label>Saran Medis:</label>
+                      <span>{selectedPatient.saran_medis}</span>
                     </div>
                   )}
                   {selectedPatient.alergi && (
@@ -682,17 +682,76 @@ export default function RekapitulasiPage() {
                       <span>{selectedPatient.alergi}</span>
                     </div>
                   )}
-                  {selectedPatient.terapi && (
+                  {selectedPatient.catatan_khusus && (
                     <div className={styles.detailItemFull}>
-                      <label>Terapi:</label>
-                      <span>{selectedPatient.terapi}</span>
+                      <label>Catatan Khusus:</label>
+                      <span>{selectedPatient.catatan_khusus}</span>
                     </div>
                   )}
                 </div>
+
+                <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Riwayat Penyakit Dahulu</h4>
+                <div className={styles.resepTable}>
+                  <table style={{ width: '100%', fontSize: '13px' }}>
+                    <thead>
+                      <tr>
+                        <th>Riwayat</th>
+                        <th>Status</th>
+                        <th>Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>Malaria/Demam Berulang</td><td>{selectedPatient.riwayat_malaria}</td><td>{selectedPatient.riwayat_malaria_ket || '-'}</td></tr>
+                      <tr><td>Penyakit Kronis</td><td>{selectedPatient.riwayat_kronis}</td><td>{selectedPatient.riwayat_kronis_ket || '-'}</td></tr>
+                      <tr><td>Rawat Inap/Operasi</td><td>{selectedPatient.riwayat_rawat_inap}</td><td>{selectedPatient.riwayat_rawat_inap_ket || '-'}</td></tr>
+                      <tr><td>Alergi Obat/Makanan</td><td>{selectedPatient.riwayat_alergi_obat}</td><td>{selectedPatient.riwayat_alergi_obat_ket || '-'}</td></tr>
+                      <tr><td>Merokok</td><td>{selectedPatient.riwayat_merokok}</td><td>{selectedPatient.riwayat_merokok_ket || '-'}</td></tr>
+                      <tr><td>Alkohol</td><td>{selectedPatient.riwayat_alkohol}</td><td>{selectedPatient.riwayat_alkohol_ket || '-'}</td></tr>
+                      <tr><td>Obat Rutin</td><td>{selectedPatient.riwayat_obat_rutin}</td><td>{selectedPatient.riwayat_obat_rutin_ket || '-'}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Pemeriksaan Fisik</h4>
+                <div className={styles.detailGrid}>
+                  <div className={styles.detailItem}>
+                    <label>Keadaan Umum:</label>
+                    <span>{selectedPatient.fisik_keadaan_umum} {selectedPatient.fisik_keadaan_umum_ket ? `(${selectedPatient.fisik_keadaan_umum_ket})` : ''}</span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <label>Kepala & Leher:</label>
+                    <span>{selectedPatient.fisik_kepala_leher || '-'}</span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <label>Jantung:</label>
+                    <span>{selectedPatient.fisik_jantung || '-'}</span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <label>Paru:</label>
+                    <span>{selectedPatient.fisik_paru || '-'}</span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <label>Abdomen:</label>
+                    <span>{selectedPatient.fisik_abdomen || '-'}</span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <label>Ekstremitas:</label>
+                    <span>{selectedPatient.fisik_ekstremitas || '-'}</span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <label>Kulit:</label>
+                    <span>{selectedPatient.fisik_kulit || '-'}</span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <label>Lain-lain:</label>
+                    <span>{selectedPatient.fisik_lain_lain || '-'}</span>
+                  </div>
+                </div>
               </section>
 
+
               {/* Data Resep */}
-              <section className={styles.detailSection}>
+              {/* <section className={styles.detailSection}>
                 <h3>Resep Obat</h3>
                 {loadingDetail ? (
                   <p>Memuat data resep...</p>
@@ -724,7 +783,7 @@ export default function RekapitulasiPage() {
                 ) : (
                   <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Tidak ada resep obat untuk pasien ini</p>
                 )}
-              </section>
+              </section> */}
             </div>
 
             <div className={styles.modalFooter}>
@@ -737,7 +796,7 @@ export default function RekapitulasiPage() {
       )}
 
       <div className={styles.footer}>
-        <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>
+        <p>Copyright © {new Date().getFullYear()} PT Doctor PHC Indonesia. All rights reserved.</p>
       </div>
     </div>
   );

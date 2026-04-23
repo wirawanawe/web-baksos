@@ -12,11 +12,20 @@ export default function Home() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   
   const [formData, setFormData] = useState({
-    tanggal_pemeriksaan: '',
     nama: '',
+    no_ktp: '',
+    no_telepon: '',
     jenis_kelamin: '',
     usia: '',
+    tanggal_lahir: '',
+    tempat_lahir: '',
+    jabatan: '',
+    unit: '',
     alamat: '',
+    email: '',
+    lokasi_penugasan: '',
+    tanggal_mulai_tugas: '',
+    durasi_penugasan: '',
     tinggi_badan: '',
     berat_badan: '',
     tensi_darah_sistol: '',
@@ -30,8 +39,8 @@ export default function Home() {
     hpl: '',
     tfu: '',
     djj_anak: '',
-    diagnosa: '',
-    terapi: '',
+    kesimpulan_kelayakan: '',
+    saran_medis: '',
     dokter_pemeriksa: '',
   });
 
@@ -82,7 +91,7 @@ export default function Home() {
           as_urat: parseFloat(formData.as_urat) || null,
           tfu: parseFloat(formData.tfu) || null,
           djj_anak: parseInt(formData.djj_anak) || null,
-          tanggal_pemeriksaan: formData.tanggal_pemeriksaan || null,
+          tanggal_pemeriksaan: localStorage.getItem('tanggal_pemeriksaan') || null,
           hpht: formData.hpht || null,
           hpl: formData.hpl || null,
         }),
@@ -96,11 +105,20 @@ export default function Home() {
         const dokter = localStorage.getItem('dokter_pemeriksa') || '';
         const tanggal = localStorage.getItem('tanggal_pemeriksaan') || new Date().toISOString().split('T')[0];
         setFormData({
-          tanggal_pemeriksaan: tanggal,
           nama: '',
+          no_ktp: '',
+          no_telepon: '',
           jenis_kelamin: '',
           usia: '',
+          tanggal_lahir: '',
+          tempat_lahir: '',
+          jabatan: '',
+          unit: '',
           alamat: '',
+          email: '',
+          lokasi_penugasan: '',
+          tanggal_mulai_tugas: '',
+          durasi_penugasan: '',
           tinggi_badan: '',
           berat_badan: '',
           tensi_darah_sistol: '',
@@ -114,8 +132,8 @@ export default function Home() {
           hpl: '',
           tfu: '',
           djj_anak: '',
-          diagnosa: '',
-          terapi: '',
+          kesimpulan_kelayakan: '',
+          saran_medis: '',
           dokter_pemeriksa: dokter,
         });
         // Scroll to top
@@ -169,12 +187,49 @@ export default function Home() {
           <h2 className={styles.sectionTitle}>IDENTITAS</h2>
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
-              <label htmlFor="nama">NAMA <span className={styles.required}>*</span></label>
+              <label htmlFor="nama">NAMA LENGKAP <span className={styles.required}>*</span></label>
               <input
                 type="text"
                 id="nama"
                 name="nama"
                 value={formData.nama}
+                onChange={handleChange}
+                required
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="no_ktp">NIK / ID PEGAWAI</label>
+              <input
+                type="text"
+                id="no_ktp"
+                name="no_ktp"
+                value={formData.no_ktp}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="tempat_lahir">TEMPAT LAHIR</label>
+              <input
+                type="text"
+                id="tempat_lahir"
+                name="tempat_lahir"
+                value={formData.tempat_lahir}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="tanggal_lahir">TANGGAL LAHIR <span className={styles.required}>*</span></label>
+              <input
+                type="date"
+                id="tanggal_lahir"
+                name="tanggal_lahir"
+                value={formData.tanggal_lahir}
                 onChange={handleChange}
                 required
                 className={styles.input}
@@ -211,8 +266,92 @@ export default function Home() {
               />
             </div>
 
+            <div className={styles.formGroup}>
+              <label htmlFor="no_telepon">NO. TELEPON / HP</label>
+              <input
+                type="text"
+                id="no_telepon"
+                name="no_telepon"
+                value={formData.no_telepon}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="email">EMAIL</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="jabatan">JABATAN / POSISI</label>
+              <input
+                type="text"
+                id="jabatan"
+                name="jabatan"
+                value={formData.jabatan}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="unit">UNIT / DEPARTEMEN</label>
+              <input
+                type="text"
+                id="unit"
+                name="unit"
+                value={formData.unit}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="lokasi_penugasan">LOKASI PENUGASAN</label>
+              <input
+                type="text"
+                id="lokasi_penugasan"
+                name="lokasi_penugasan"
+                value={formData.lokasi_penugasan}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="tanggal_mulai_tugas">TANGGAL MULAI TUGAS</label>
+              <input
+                type="date"
+                id="tanggal_mulai_tugas"
+                name="tanggal_mulai_tugas"
+                value={formData.tanggal_mulai_tugas}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="durasi_penugasan">DURASI PENUGASAN</label>
+              <input
+                type="text"
+                id="durasi_penugasan"
+                name="durasi_penugasan"
+                value={formData.durasi_penugasan}
+                onChange={handleChange}
+                className={styles.input}
+              />
+            </div>
+
             <div className={styles.formGroupFull}>
-              <label htmlFor="alamat">ALAMAT <span className={styles.required}>*</span></label>
+              <label htmlFor="alamat">ALAMAT DOMISILI <span className={styles.required}>*</span></label>
               <textarea
                 id="alamat"
                 name="alamat"
@@ -405,34 +544,38 @@ export default function Home() {
           </div>
         </section>
 
-        {/* DIAGNOSA */}
+        {/* KESIMPULAN KELAYAKAN */}
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Diagnosa</h2>
+          <h2 className={styles.sectionTitle}>Kesimpulan Kelayakan</h2>
           <div className={styles.formGrid}>
             <div className={styles.formGroupFull}>
-              <label htmlFor="diagnosa">Diagnosa</label>
-              <textarea
-                id="diagnosa"
-                name="diagnosa"
-                value={formData.diagnosa}
+              <label htmlFor="kesimpulan_kelayakan">Kesimpulan Kelayakan</label>
+              <select
+                id="kesimpulan_kelayakan"
+                name="kesimpulan_kelayakan"
+                value={formData.kesimpulan_kelayakan}
                 onChange={handleChange}
-                rows={4}
-                className={styles.textarea}
-              />
+                className={styles.select}
+              >
+                <option value="">-- Pilih Kelayakan --</option>
+                <option value="FIT">FIT</option>
+                <option value="FIT WITH NOTE">FIT WITH NOTE</option>
+                <option value="UNFIT">UNFIT</option>
+              </select>
             </div>
           </div>
         </section>
 
-        {/* TERAPI */}
+        {/* SARAN MEDIS */}
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Terapi</h2>
+          <h2 className={styles.sectionTitle}>Saran Medis</h2>
           <div className={styles.formGrid}>
             <div className={styles.formGroupFull}>
-              <label htmlFor="terapi">Terapi</label>
+              <label htmlFor="saran_medis">Saran Medis</label>
               <textarea
-                id="terapi"
-                name="terapi"
-                value={formData.terapi}
+                id="saran_medis"
+                name="saran_medis"
+                value={formData.saran_medis}
                 onChange={handleChange}
                 rows={4}
                 className={styles.textarea}
@@ -473,11 +616,20 @@ export default function Home() {
               const dokter = localStorage.getItem('dokter_pemeriksa') || '';
               const tanggal = localStorage.getItem('tanggal_pemeriksaan') || new Date().toISOString().split('T')[0];
               setFormData({
-                tanggal_pemeriksaan: tanggal,
                 nama: '',
+                no_ktp: '',
+                no_telepon: '',
                 jenis_kelamin: '',
                 usia: '',
+                tanggal_lahir: '',
+                tempat_lahir: '',
+                jabatan: '',
+                unit: '',
                 alamat: '',
+                email: '',
+                lokasi_penugasan: '',
+                tanggal_mulai_tugas: '',
+                durasi_penugasan: '',
                 tinggi_badan: '',
                 berat_badan: '',
                 tensi_darah_sistol: '',
@@ -491,8 +643,8 @@ export default function Home() {
                 hpl: '',
                 tfu: '',
                 djj_anak: '',
-                diagnosa: '',
-                terapi: '',
+                kesimpulan_kelayakan: '',
+                saran_medis: '',
                 dokter_pemeriksa: dokter,
               });
               setMessage(null);
@@ -504,7 +656,7 @@ export default function Home() {
         </div>
       </form>
       <div className={styles.footer}>
-        <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>
+        <p>Copyright © {new Date().getFullYear()} PT Doctor PHC Indonesia. All rights reserved.</p>
       </div>
     </div>
   );

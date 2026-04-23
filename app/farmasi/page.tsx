@@ -15,8 +15,22 @@ interface Patient {
   jenis_kelamin: string;
   usia: number;
   tanggal_lahir?: string;
+  tempat_lahir?: string | null;
+  jabatan?: string | null;
+  unit?: string | null;
   alamat: string;
-  diagnosa: string | null;
+  email?: string | null;
+  lokasi_penugasan?: string | null;
+  tanggal_mulai_tugas?: string | null;
+  durasi_penugasan?: string | null;
+  tinggi_badan?: number | null;
+  berat_badan?: number | null;
+  imt?: number | null;
+  tensi_darah_sistol?: number | null;
+  tensi_darah_diastol?: number | null;
+  denyut_nadi?: number | null;
+  suhu_tubuh?: number | null;
+  laju_pernapasan?: number | null;
   resep: string | null;
   status: string;
   locked_by?: string | null;
@@ -458,9 +472,6 @@ export default function FarmasiPage() {
                     )}
                   <strong>{patient.nama}</strong>
                     <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
-                  {patient.diagnosa && (
-                    <span className={styles.diagnosa}>Diagnosa: {patient.diagnosa}</span>
-                  )}
                 </div>
               </div>
             ))}
@@ -517,9 +528,6 @@ export default function FarmasiPage() {
               <p><strong>No. KTP:</strong> {selectedPatient.no_ktp || '-'}</p>
               <p><strong>No. Telepon:</strong> {selectedPatient.no_telepon || '-'}</p>
               <p><strong>Alamat:</strong> {selectedPatient.alamat}</p>
-              {selectedPatient.diagnosa && (
-                <p><strong>Diagnosa:</strong> {selectedPatient.diagnosa}</p>
-              )}
             </div>
           </div>
 
@@ -767,7 +775,7 @@ export default function FarmasiPage() {
       )}
 
       <div className={styles.footer}>
-        <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>
+        <p>Copyright © {new Date().getFullYear()} PT Doctor PHC Indonesia. All rights reserved.</p>
       </div>
     </div>
   );

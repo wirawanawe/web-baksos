@@ -74,7 +74,14 @@ export async function PUT(
       no_telepon,
       jenis_kelamin,
       tanggal_lahir,
+      tempat_lahir,
+      jabatan,
+      unit,
       alamat,
+      email,
+      lokasi_penugasan,
+      tanggal_mulai_tugas,
+      durasi_penugasan,
     } = data;
 
     // Validasi: No. KTP dan No. Telepon tidak boleh sama dengan pasien lain (kecuali pasien yang sedang diupdate)
@@ -140,9 +147,37 @@ export async function PUT(
       pasienUpdates.push('tanggal_lahir = ?');
       pasienValues.push(tanggal_lahir || null);
     }
+    if (tempat_lahir !== undefined) {
+      pasienUpdates.push('tempat_lahir = ?');
+      pasienValues.push(tempat_lahir || null);
+    }
+    if (jabatan !== undefined) {
+      pasienUpdates.push('jabatan = ?');
+      pasienValues.push(jabatan || null);
+    }
+    if (unit !== undefined) {
+      pasienUpdates.push('unit = ?');
+      pasienValues.push(unit || null);
+    }
     if (alamat !== undefined) {
       pasienUpdates.push('alamat = ?');
       pasienValues.push(alamat);
+    }
+    if (email !== undefined) {
+      pasienUpdates.push('email = ?');
+      pasienValues.push(email || null);
+    }
+    if (lokasi_penugasan !== undefined) {
+      pasienUpdates.push('lokasi_penugasan = ?');
+      pasienValues.push(lokasi_penugasan || null);
+    }
+    if (tanggal_mulai_tugas !== undefined) {
+      pasienUpdates.push('tanggal_mulai_tugas = ?');
+      pasienValues.push(tanggal_mulai_tugas || null);
+    }
+    if (durasi_penugasan !== undefined) {
+      pasienUpdates.push('durasi_penugasan = ?');
+      pasienValues.push(durasi_penugasan || null);
     }
 
     if (pasienUpdates.length > 0) {
@@ -158,8 +193,12 @@ export async function PUT(
       tanggal_pemeriksaan,
       tinggi_badan,
       berat_badan,
+      imt,
       tensi_darah_sistol,
       tensi_darah_diastol,
+      denyut_nadi,
+      suhu_tubuh,
+      laju_pernapasan,
       kolesterol,
       gds,
       as_urat,
@@ -170,13 +209,37 @@ export async function PUT(
       hpl,
       tfu,
       djj_anak,
-      diagnosa,
       alergi,
-      terapi,
       resep,
       dokter_pemeriksa,
       lokasi_id,
       status,
+      riwayat_malaria,
+      riwayat_malaria_ket,
+      riwayat_kronis,
+      riwayat_kronis_ket,
+      riwayat_rawat_inap,
+      riwayat_rawat_inap_ket,
+      riwayat_alergi_obat,
+      riwayat_alergi_obat_ket,
+      riwayat_merokok,
+      riwayat_merokok_ket,
+      riwayat_alkohol,
+      riwayat_alkohol_ket,
+      riwayat_obat_rutin,
+      riwayat_obat_rutin_ket,
+      catatan_khusus,
+      fisik_keadaan_umum,
+      fisik_keadaan_umum_ket,
+      fisik_kepala_leher,
+      fisik_jantung,
+      fisik_paru,
+      fisik_abdomen,
+      fisik_ekstremitas,
+      fisik_kulit,
+      fisik_lain_lain,
+      kesimpulan_kelayakan,
+      saran_medis,
     } = data;
 
     // Build dynamic update query untuk pemeriksaan
@@ -195,6 +258,10 @@ export async function PUT(
       updates.push('berat_badan = ?');
       values.push(berat_badan || null);
     }
+    if (imt !== undefined) {
+      updates.push('imt = ?');
+      values.push(imt || null);
+    }
     if (tensi_darah_sistol !== undefined) {
       updates.push('tensi_darah_sistol = ?');
       values.push(tensi_darah_sistol || null);
@@ -202,6 +269,18 @@ export async function PUT(
     if (tensi_darah_diastol !== undefined) {
       updates.push('tensi_darah_diastol = ?');
       values.push(tensi_darah_diastol || null);
+    }
+    if (denyut_nadi !== undefined) {
+      updates.push('denyut_nadi = ?');
+      values.push(denyut_nadi || null);
+    }
+    if (suhu_tubuh !== undefined) {
+      updates.push('suhu_tubuh = ?');
+      values.push(suhu_tubuh || null);
+    }
+    if (laju_pernapasan !== undefined) {
+      updates.push('laju_pernapasan = ?');
+      values.push(laju_pernapasan || null);
     }
     if (kolesterol !== undefined) {
       updates.push('kolesterol = ?');
@@ -243,17 +322,113 @@ export async function PUT(
       updates.push('djj_anak = ?');
       values.push(djj_anak || null);
     }
-    if (diagnosa !== undefined) {
-      updates.push('diagnosa = ?');
-      values.push(diagnosa || null);
+    if (riwayat_malaria !== undefined) {
+      updates.push('riwayat_malaria = ?');
+      values.push(riwayat_malaria || 'Tidak');
+    }
+    if (riwayat_malaria_ket !== undefined) {
+      updates.push('riwayat_malaria_ket = ?');
+      values.push(riwayat_malaria_ket || null);
+    }
+    if (riwayat_kronis !== undefined) {
+      updates.push('riwayat_kronis = ?');
+      values.push(riwayat_kronis || 'Tidak');
+    }
+    if (riwayat_kronis_ket !== undefined) {
+      updates.push('riwayat_kronis_ket = ?');
+      values.push(riwayat_kronis_ket || null);
+    }
+    if (riwayat_rawat_inap !== undefined) {
+      updates.push('riwayat_rawat_inap = ?');
+      values.push(riwayat_rawat_inap || 'Tidak');
+    }
+    if (riwayat_rawat_inap_ket !== undefined) {
+      updates.push('riwayat_rawat_inap_ket = ?');
+      values.push(riwayat_rawat_inap_ket || null);
+    }
+    if (riwayat_alergi_obat !== undefined) {
+      updates.push('riwayat_alergi_obat = ?');
+      values.push(riwayat_alergi_obat || 'Tidak');
+    }
+    if (riwayat_alergi_obat_ket !== undefined) {
+      updates.push('riwayat_alergi_obat_ket = ?');
+      values.push(riwayat_alergi_obat_ket || null);
+    }
+    if (riwayat_merokok !== undefined) {
+      updates.push('riwayat_merokok = ?');
+      values.push(riwayat_merokok || 'Tidak');
+    }
+    if (riwayat_merokok_ket !== undefined) {
+      updates.push('riwayat_merokok_ket = ?');
+      values.push(riwayat_merokok_ket || null);
+    }
+    if (riwayat_alkohol !== undefined) {
+      updates.push('riwayat_alkohol = ?');
+      values.push(riwayat_alkohol || 'Tidak');
+    }
+    if (riwayat_alkohol_ket !== undefined) {
+      updates.push('riwayat_alkohol_ket = ?');
+      values.push(riwayat_alkohol_ket || null);
+    }
+    if (riwayat_obat_rutin !== undefined) {
+      updates.push('riwayat_obat_rutin = ?');
+      values.push(riwayat_obat_rutin || 'Tidak');
+    }
+    if (riwayat_obat_rutin_ket !== undefined) {
+      updates.push('riwayat_obat_rutin_ket = ?');
+      values.push(riwayat_obat_rutin_ket || null);
+    }
+    if (catatan_khusus !== undefined) {
+      updates.push('catatan_khusus = ?');
+      values.push(catatan_khusus || null);
+    }
+    if (fisik_keadaan_umum !== undefined) {
+      updates.push('fisik_keadaan_umum = ?');
+      values.push(fisik_keadaan_umum || 'Baik');
+    }
+    if (fisik_keadaan_umum_ket !== undefined) {
+      updates.push('fisik_keadaan_umum_ket = ?');
+      values.push(fisik_keadaan_umum_ket || null);
+    }
+    if (fisik_kepala_leher !== undefined) {
+      updates.push('fisik_kepala_leher = ?');
+      values.push(fisik_kepala_leher || null);
+    }
+    if (fisik_jantung !== undefined) {
+      updates.push('fisik_jantung = ?');
+      values.push(fisik_jantung || null);
+    }
+    if (fisik_paru !== undefined) {
+      updates.push('fisik_paru = ?');
+      values.push(fisik_paru || null);
+    }
+    if (fisik_abdomen !== undefined) {
+      updates.push('fisik_abdomen = ?');
+      values.push(fisik_abdomen || null);
+    }
+    if (fisik_ekstremitas !== undefined) {
+      updates.push('fisik_ekstremitas = ?');
+      values.push(fisik_ekstremitas || null);
+    }
+    if (fisik_kulit !== undefined) {
+      updates.push('fisik_kulit = ?');
+      values.push(fisik_kulit || null);
+    }
+    if (fisik_lain_lain !== undefined) {
+      updates.push('fisik_lain_lain = ?');
+      values.push(fisik_lain_lain || null);
+    }
+    if (kesimpulan_kelayakan !== undefined) {
+      updates.push('kesimpulan_kelayakan = ?');
+      values.push(kesimpulan_kelayakan || null);
+    }
+    if (saran_medis !== undefined) {
+      updates.push('saran_medis = ?');
+      values.push(saran_medis || null);
     }
     if (alergi !== undefined) {
       updates.push('alergi = ?');
       values.push(alergi || null);
-    }
-    if (terapi !== undefined) {
-      updates.push('terapi = ?');
-      values.push(terapi || null);
     }
     if (resep !== undefined) {
       updates.push('resep = ?');
@@ -351,16 +526,27 @@ export async function GET(
         p.no_telepon,
         p.jenis_kelamin,
         p.tanggal_lahir,
+        p.tempat_lahir,
+        p.jabatan,
+        p.unit,
         TIMESTAMPDIFF(YEAR, p.tanggal_lahir, CURDATE()) as usia,
         p.alamat,
+        p.email,
+        p.lokasi_penugasan,
+        p.tanggal_mulai_tugas,
+        p.durasi_penugasan,
         p.created_at as pasien_created_at,
         p.updated_at as pasien_updated_at,
         pm.id${noRegistrasiColumnExists ? ',\n        pm.no_registrasi' : ''},
         pm.tanggal_pemeriksaan,
         pm.tinggi_badan,
         pm.berat_badan,
+        pm.imt,
         pm.tensi_darah_sistol,
         pm.tensi_darah_diastol,
+        pm.denyut_nadi,
+        pm.suhu_tubuh,
+        pm.laju_pernapasan,
         pm.kolesterol,
         pm.gds,
         pm.as_urat,
@@ -371,10 +557,34 @@ export async function GET(
         pm.hpl,
         pm.tfu,
         pm.djj_anak,
-        pm.diagnosa,
         pm.alergi,
-        pm.terapi,
         pm.resep,
+        pm.riwayat_malaria,
+        pm.riwayat_malaria_ket,
+        pm.riwayat_kronis,
+        pm.riwayat_kronis_ket,
+        pm.riwayat_rawat_inap,
+        pm.riwayat_rawat_inap_ket,
+        pm.riwayat_alergi_obat,
+        pm.riwayat_alergi_obat_ket,
+        pm.riwayat_merokok,
+        pm.riwayat_merokok_ket,
+        pm.riwayat_alkohol,
+        pm.riwayat_alkohol_ket,
+        pm.riwayat_obat_rutin,
+        pm.riwayat_obat_rutin_ket,
+        pm.catatan_khusus,
+        pm.fisik_keadaan_umum,
+        pm.fisik_keadaan_umum_ket,
+        pm.fisik_kepala_leher,
+        pm.fisik_jantung,
+        pm.fisik_paru,
+        pm.fisik_abdomen,
+        pm.fisik_ekstremitas,
+        pm.fisik_kulit,
+        pm.fisik_lain_lain,
+        pm.kesimpulan_kelayakan,
+        pm.saran_medis,
         pm.dokter_pemeriksa,
         pm.lokasi_id,
         pm.status,

@@ -77,9 +77,9 @@
 }
 
 .dropdownButton.active {
-  background: #0ea5e9;
+  background: #003366;
   color: white;
-  border-color: #0ea5e9;
+  border-color: #003366;
 }
 
 .settingIcon {
@@ -139,12 +139,12 @@
 
 .dropdownItem:hover {
   background: #f9fafb;
-  color: #0ea5e9;
+  color: #003366;
 }
 
 .dropdownItemActive {
-  background: #e0f2fe;
-  color: #0ea5e9;
+  background: #f0f7ff;
+  color: #003366;
   font-weight: 600;
 }
 
@@ -228,7 +228,7 @@
 .mainTitle {
   font-size: 16px;
   font-weight: 700;
-  color: #0f766e;
+  color: #003366;
   line-height: 1.4;
   margin: 0;
 }
@@ -236,7 +236,7 @@
 .tagline {
   font-size: 13px;
   font-style: italic;
-  color: #0f766e;
+  color: #003366;
   margin: 0;
   line-height: 1.4;
 }

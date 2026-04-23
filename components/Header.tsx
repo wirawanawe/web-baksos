@@ -86,10 +86,10 @@ export default function Header() {
       <div className={styles.headerContent}>
         <div className={styles.logoContainer}>
           <div className={styles.logoIcon}>
-            <Image 
-              src="/images/logo-ybm.png" 
-              alt="Logo YBM PLN" 
-              width={150} 
+            <Image
+              src="/images/logo-phc.png"
+              alt="Logo YBM PLN"
+              width={150}
               height={60}
               priority
             />
@@ -97,11 +97,9 @@ export default function Header() {
         </div>
         <div className={styles.textContainer}>
           <h1 className={styles.mainTitle}>
-            PEMERIKSAAN KESEHATAN DAN PENGOBATAN GRATIS, SERTA PEMBERIAN PAKET PANGAN BERGIZI UNTUK BALITA
+            PEMERIKSAAN KESEHATAN PRA-PENUGASAN KE DAERAH ENDEMIS MALARIA
           </h1>
-          <p className={styles.tagline}>
-            &quot;Merdeka Bebas Stunting, Dukung Generasi Sehat dan Berakhlak Islami&quot;
-          </p>
+
         </div>
       </div>
       <div className={styles.headerActions}>
@@ -160,7 +158,7 @@ export default function Header() {
             )}
           </div>
         )}
-        <button 
+        <button
           onClick={handleLogout}
           className={styles.btnLogout}
         >

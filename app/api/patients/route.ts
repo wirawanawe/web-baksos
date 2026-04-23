@@ -26,6 +26,77 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check and migrate if columns don't exist in pasien table
+    try {
+      const [pasienColumns] = await connection.execute("SHOW COLUMNS FROM pasien") as any[];
+      const columnNames = pasienColumns.map((col: any) => col.Field);
+      
+      const newColumns = [
+        { name: 'tempat_lahir', type: 'VARCHAR(255)' },
+        { name: 'jabatan', type: 'VARCHAR(255)' },
+        { name: 'unit', type: 'VARCHAR(255)' },
+        { name: 'email', type: 'VARCHAR(255)' },
+        { name: 'lokasi_penugasan', type: 'VARCHAR(255)' },
+        { name: 'tanggal_mulai_tugas', type: 'DATE' },
+        { name: 'durasi_penugasan', type: 'VARCHAR(100)' }
+      ];
+      
+      for (const col of newColumns) {
+        if (!columnNames.includes(col.name)) {
+          console.log(`Adding ${col.name} column to pasien table...`);
+          await connection.execute(`ALTER TABLE pasien ADD COLUMN ${col.name} ${col.type}`);
+        }
+      }
+
+      // Check and migrate columns in pemeriksaan table
+      const [pemeriksaanColumns] = await connection.execute("SHOW COLUMNS FROM pemeriksaan") as any[];
+      const pColumnNames = pemeriksaanColumns.map((col: any) => col.Field);
+      
+      const newPColumns = [
+        { name: 'imt', type: 'DECIMAL(5,2)' },
+        { name: 'denyut_nadi', type: 'INT' },
+        { name: 'suhu_tubuh', type: 'DECIMAL(4,2)' },
+        { name: 'laju_pernapasan', type: 'INT' },
+        
+        // Doctor fields
+        { name: 'riwayat_malaria', type: "ENUM('Ya', 'Tidak') DEFAULT 'Tidak'" },
+        { name: 'riwayat_malaria_ket', type: 'TEXT' },
+        { name: 'riwayat_kronis', type: "ENUM('Ya', 'Tidak') DEFAULT 'Tidak'" },
+        { name: 'riwayat_kronis_ket', type: 'TEXT' },
+        { name: 'riwayat_rawat_inap', type: "ENUM('Ya', 'Tidak') DEFAULT 'Tidak'" },
+        { name: 'riwayat_rawat_inap_ket', type: 'TEXT' },
+        { name: 'riwayat_alergi_obat', type: "ENUM('Ya', 'Tidak') DEFAULT 'Tidak'" },
+        { name: 'riwayat_alergi_obat_ket', type: 'TEXT' },
+        { name: 'riwayat_merokok', type: "ENUM('Ya', 'Tidak') DEFAULT 'Tidak'" },
+        { name: 'riwayat_merokok_ket', type: 'TEXT' },
+        { name: 'riwayat_alkohol', type: "ENUM('Ya', 'Tidak') DEFAULT 'Tidak'" },
+        { name: 'riwayat_alkohol_ket', type: 'TEXT' },
+        { name: 'riwayat_obat_rutin', type: "ENUM('Ya', 'Tidak') DEFAULT 'Tidak'" },
+        { name: 'riwayat_obat_rutin_ket', type: 'TEXT' },
+        { name: 'catatan_khusus', type: 'TEXT' },
+        { name: 'fisik_keadaan_umum', type: "ENUM('Baik', 'Kurang Baik') DEFAULT 'Baik'" },
+        { name: 'fisik_keadaan_umum_ket', type: 'TEXT' },
+        { name: 'fisik_kepala_leher', type: 'TEXT' },
+        { name: 'fisik_jantung', type: 'TEXT' },
+        { name: 'fisik_paru', type: 'TEXT' },
+        { name: 'fisik_abdomen', type: 'TEXT' },
+        { name: 'fisik_ekstremitas', type: 'TEXT' },
+        { name: 'fisik_kulit', type: 'TEXT' },
+        { name: 'fisik_lain_lain', type: 'TEXT' },
+        { name: 'kesimpulan_kelayakan', type: "ENUM('FIT', 'FIT WITH NOTE', 'UNFIT')" },
+        { name: 'saran_medis', type: 'TEXT' }
+      ];
+      
+      for (const col of newPColumns) {
+        if (!pColumnNames.includes(col.name)) {
+          console.log(`Adding ${col.name} column to pemeriksaan table...`);
+          await connection.execute(`ALTER TABLE pemeriksaan ADD COLUMN ${col.name} ${col.type}`);
+        }
+      }
+    } catch (migError: any) {
+      console.error('Migration check error:', migError.message);
+    }
+
     // Check and migrate if kode column doesn't exist in lokasi table
     let kodeColumnExists = false;
     let noRegistrasiColumnExists = false;
@@ -79,11 +150,22 @@ export async function POST(request: NextRequest) {
       no_telepon,
       jenis_kelamin,
       tanggal_lahir,
+      tempat_lahir,
+      jabatan,
+      unit,
       alamat,
+      email,
+      lokasi_penugasan,
+      tanggal_mulai_tugas,
+      durasi_penugasan,
       tinggi_badan,
       berat_badan,
+      imt,
       tensi_darah_sistol,
       tensi_darah_diastol,
+      denyut_nadi,
+      suhu_tubuh,
+      laju_pernapasan,
       kolesterol,
       gds,
       as_urat,
@@ -94,13 +176,13 @@ export async function POST(request: NextRequest) {
       hpl,
       tfu,
       djj_anak,
-      diagnosa,
       alergi,
-      terapi,
       resep,
       dokter_pemeriksa,
       lokasi_id,
       status,
+      kesimpulan_kelayakan,
+      saran_medis,
     } = data;
 
     // Validasi: No. KTP dan No. Telepon tidak boleh sama dengan pasien lain
@@ -167,22 +249,63 @@ export async function POST(request: NextRequest) {
         pasienId = existingPasien[0].id;
         // Update data pasien jika ada perubahan
         await connection.execute(
-          'UPDATE pasien SET nama = ?, jenis_kelamin = ?, tanggal_lahir = ?, alamat = ? WHERE id = ?',
-          [nama, jenis_kelamin, tanggal_lahir || null, alamat, pasienId]
+          'UPDATE pasien SET nama = ?, jenis_kelamin = ?, tanggal_lahir = ?, tempat_lahir = ?, jabatan = ?, unit = ?, alamat = ?, email = ?, lokasi_penugasan = ?, tanggal_mulai_tugas = ?, durasi_penugasan = ? WHERE id = ?',
+          [
+            nama, 
+            jenis_kelamin, 
+            tanggal_lahir || null, 
+            tempat_lahir || null,
+            jabatan || null,
+            unit || null,
+            alamat, 
+            email || null,
+            lokasi_penugasan || null,
+            tanggal_mulai_tugas || null,
+            durasi_penugasan || null,
+            pasienId
+          ]
         );
       } else {
         // Insert pasien baru
         const [pasienResult] = await connection.execute(
-          'INSERT INTO pasien (nama, no_ktp, no_telepon, jenis_kelamin, tanggal_lahir, alamat) VALUES (?, ?, ?, ?, ?, ?)',
-          [nama, no_ktp || null, no_telepon || null, jenis_kelamin, tanggal_lahir || null, alamat]
+          'INSERT INTO pasien (nama, no_ktp, no_telepon, jenis_kelamin, tanggal_lahir, tempat_lahir, jabatan, unit, alamat, email, lokasi_penugasan, tanggal_mulai_tugas, durasi_penugasan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            nama, 
+            no_ktp || null, 
+            no_telepon || null, 
+            jenis_kelamin, 
+            tanggal_lahir || null, 
+            tempat_lahir || null,
+            jabatan || null,
+            unit || null,
+            alamat,
+            email || null,
+            lokasi_penugasan || null,
+            tanggal_mulai_tugas || null,
+            durasi_penugasan || null
+          ]
         );
         pasienId = (pasienResult as any).insertId;
       }
     } else {
       // Jika tidak ada no_ktp dan no_telepon, insert pasien baru
       const [pasienResult] = await connection.execute(
-        'INSERT INTO pasien (nama, no_ktp, no_telepon, jenis_kelamin, tanggal_lahir, alamat) VALUES (?, ?, ?, ?, ?, ?)',
-        [nama, null, null, jenis_kelamin, tanggal_lahir || null, alamat]
+        'INSERT INTO pasien (nama, no_ktp, no_telepon, jenis_kelamin, tanggal_lahir, tempat_lahir, jabatan, unit, alamat, email, lokasi_penugasan, tanggal_mulai_tugas, durasi_penugasan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          nama, 
+          null, 
+          null, 
+          jenis_kelamin, 
+          tanggal_lahir || null, 
+          tempat_lahir || null,
+          jabatan || null,
+          unit || null,
+          alamat,
+          email || null,
+          lokasi_penugasan || null,
+          tanggal_mulai_tugas || null,
+          durasi_penugasan || null
+        ]
       );
       pasienId = (pasienResult as any).insertId;
     }
@@ -238,14 +361,28 @@ export async function POST(request: NextRequest) {
     // Insert pemeriksaan
     const insertFields = [
       'pasien_id', 'tanggal_pemeriksaan',
-      'tinggi_badan', 'berat_badan',
+      'tinggi_badan', 'berat_badan', 'imt',
       'tensi_darah_sistol', 'tensi_darah_diastol',
+      'denyut_nadi', 'suhu_tubuh', 'laju_pernapasan',
       'kolesterol', 'gds', 'as_urat',
       'keluhan',
       'anamnesa', 'pemeriksaan_fisik',
       'hpht', 'hpl', 'tfu', 'djj_anak',
-      'diagnosa', 'alergi', 'terapi', 'resep',
-      'dokter_pemeriksa', 'lokasi_id', 'status'
+      'alergi', 'resep',
+      'kesimpulan_kelayakan', 'saran_medis',
+      'dokter_pemeriksa', 'lokasi_id', 'status',
+      'riwayat_malaria', 'riwayat_malaria_ket',
+      'riwayat_kronis', 'riwayat_kronis_ket',
+      'riwayat_rawat_inap', 'riwayat_rawat_inap_ket',
+      'riwayat_alergi_obat', 'riwayat_alergi_obat_ket',
+      'riwayat_merokok', 'riwayat_merokok_ket',
+      'riwayat_alkohol', 'riwayat_alkohol_ket',
+      'riwayat_obat_rutin', 'riwayat_obat_rutin_ket',
+      'catatan_khusus',
+      'fisik_keadaan_umum', 'fisik_keadaan_umum_ket',
+      'fisik_kepala_leher', 'fisik_jantung', 'fisik_paru',
+      'fisik_abdomen', 'fisik_ekstremitas', 'fisik_kulit',
+      'fisik_lain_lain'
     ];
     
     const insertValues = [
@@ -253,8 +390,12 @@ export async function POST(request: NextRequest) {
         tanggal_pemeriksaan || null,
         tinggi_badan || null,
         berat_badan || null,
+        imt || null,
         tensi_darah_sistol || null,
         tensi_darah_diastol || null,
+        denyut_nadi || null,
+        suhu_tubuh || null,
+        laju_pernapasan || null,
         kolesterol || null,
         gds || null,
         as_urat || null,
@@ -265,13 +406,37 @@ export async function POST(request: NextRequest) {
         hpl || null,
         tfu || null,
         djj_anak || null,
-        diagnosa || null,
-      alergi || null,
-        terapi || null,
+        alergi || null,
         resep || null,
+        kesimpulan_kelayakan || null,
+        saran_medis || null,
         dokter_pemeriksa || null,
       lokasi_id || null,
         status || 'pendaftaran',
+        data.riwayat_malaria || 'Tidak',
+        data.riwayat_malaria_ket || null,
+        data.riwayat_kronis || 'Tidak',
+        data.riwayat_kronis_ket || null,
+        data.riwayat_rawat_inap || 'Tidak',
+        data.riwayat_rawat_inap_ket || null,
+        data.riwayat_alergi_obat || 'Tidak',
+        data.riwayat_alergi_obat_ket || null,
+        data.riwayat_merokok || 'Tidak',
+        data.riwayat_merokok_ket || null,
+        data.riwayat_alkohol || 'Tidak',
+        data.riwayat_alkohol_ket || null,
+        data.riwayat_obat_rutin || 'Tidak',
+        data.riwayat_obat_rutin_ket || null,
+        data.catatan_khusus || null,
+        data.fisik_keadaan_umum || 'Baik',
+        data.fisik_keadaan_umum_ket || null,
+        data.fisik_kepala_leher || null,
+        data.fisik_jantung || null,
+        data.fisik_paru || null,
+        data.fisik_abdomen || null,
+        data.fisik_ekstremitas || null,
+        data.fisik_kulit || null,
+        data.fisik_lain_lain || null
     ];
     
     if (noRegistrasiColumnExists && noRegistrasi) {
@@ -491,16 +656,27 @@ export async function GET(request: NextRequest) {
         p.no_telepon,
         p.jenis_kelamin,
         p.tanggal_lahir,
+        p.tempat_lahir,
+        p.jabatan,
+        p.unit,
         TIMESTAMPDIFF(YEAR, p.tanggal_lahir, CURDATE()) as usia,
         p.alamat,
+        p.email,
+        p.lokasi_penugasan,
+        p.tanggal_mulai_tugas,
+        p.durasi_penugasan,
         p.created_at as pasien_created_at,
         p.updated_at as pasien_updated_at,
         pm.id${noRegistrasiColumnExists ? ',\n        pm.no_registrasi' : ''},
         pm.tanggal_pemeriksaan,
         pm.tinggi_badan,
         pm.berat_badan,
+        pm.imt,
         pm.tensi_darah_sistol,
         pm.tensi_darah_diastol,
+        pm.denyut_nadi,
+        pm.suhu_tubuh,
+        pm.laju_pernapasan,
         pm.kolesterol,
         pm.gds,
         pm.as_urat,
@@ -510,10 +686,34 @@ export async function GET(request: NextRequest) {
         pm.hpht,
         pm.hpl,
         pm.tfu,
-        pm.djj_anak,
-        pm.diagnosa${alergiColumnExists ? ',\n        pm.alergi' : ''},
-        pm.terapi,
+        pm.djj_anak${alergiColumnExists ? ',\n        pm.alergi' : ''},
         pm.resep,
+        pm.riwayat_malaria,
+        pm.riwayat_malaria_ket,
+        pm.riwayat_kronis,
+        pm.riwayat_kronis_ket,
+        pm.riwayat_rawat_inap,
+        pm.riwayat_rawat_inap_ket,
+        pm.riwayat_alergi_obat,
+        pm.riwayat_alergi_obat_ket,
+        pm.riwayat_merokok,
+        pm.riwayat_merokok_ket,
+        pm.riwayat_alkohol,
+        pm.riwayat_alkohol_ket,
+        pm.riwayat_obat_rutin,
+        pm.riwayat_obat_rutin_ket,
+        pm.catatan_khusus,
+        pm.fisik_keadaan_umum,
+        pm.fisik_keadaan_umum_ket,
+        pm.fisik_kepala_leher,
+        pm.fisik_jantung,
+        pm.fisik_paru,
+        pm.fisik_abdomen,
+        pm.fisik_ekstremitas,
+        pm.fisik_kulit,
+        pm.fisik_lain_lain,
+        pm.kesimpulan_kelayakan,
+        pm.saran_medis,
         pm.dokter_pemeriksa${lokasiIdColumnExists ? ',\n        pm.lokasi_id' : ''},
         pm.status${lockedByColumnExists ? ',\n        pm.locked_by,\n        pm.locked_at' : ''},
         pm.created_at,

@@ -15,24 +15,64 @@ interface Patient {
   jenis_kelamin: string;
   usia: number;
   tanggal_lahir?: string;
+  tempat_lahir?: string | null;
+  jabatan?: string | null;
+  unit?: string | null;
   alamat: string;
+  email?: string | null;
+  lokasi_penugasan?: string | null;
+  tanggal_mulai_tugas?: string | null;
+  durasi_penugasan?: string | null;
   tinggi_badan: number | null;
   berat_badan: number | null;
+  imt: number | null;
   tensi_darah_sistol: number | null;
   tensi_darah_diastol: number | null;
+  denyut_nadi: number | null;
+  suhu_tubuh: number | null;
+  laju_pernapasan: number | null;
   kolesterol: number | null;
   gds: number | null;
   as_urat: number | null;
   keluhan: string | null;
+
+  // Riwayat Penyakit Dahulu
+  riwayat_malaria: string | null;
+  riwayat_malaria_ket: string | null;
+  riwayat_kronis: string | null;
+  riwayat_kronis_ket: string | null;
+  riwayat_rawat_inap: string | null;
+  riwayat_rawat_inap_ket: string | null;
+  riwayat_alergi_obat: string | null;
+  riwayat_alergi_obat_ket: string | null;
+  riwayat_merokok: string | null;
+  riwayat_merokok_ket: string | null;
+  riwayat_alkohol: string | null;
+  riwayat_alkohol_ket: string | null;
+  riwayat_obat_rutin: string | null;
+  riwayat_obat_rutin_ket: string | null;
+  catatan_khusus: string | null;
+
+  // Pemeriksaan Fisik (Relevan)
+  fisik_keadaan_umum: string | null;
+  fisik_keadaan_umum_ket: string | null;
+  fisik_kepala_leher: string | null;
+  fisik_jantung: string | null;
+  fisik_paru: string | null;
+  fisik_abdomen: string | null;
+  fisik_ekstremitas: string | null;
+  fisik_kulit: string | null;
+  fisik_lain_lain: string | null;
+
   anamnesa?: string | null;
   pemeriksaan_fisik?: string | null;
   hpht?: string | null;
   hpl?: string | null;
   tfu?: number | null;
   djj_anak?: number | null;
-  diagnosa?: string | null;
   alergi?: string | null;
-  terapi?: string | null;
+  kesimpulan_kelayakan: string | null;
+  saran_medis: string | null;
   dokter_pemeriksa: string | null;
   status: string;
   locked_by?: string | null;
@@ -66,18 +106,80 @@ export default function DokterPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
   const itemsPerPage = 10;
-  
-  const [formData, setFormData] = useState({
+
+  const initialFormData = {
+    keluhan: '',
+    riwayat_malaria: 'Tidak',
+    riwayat_malaria_ket: '',
+    riwayat_kronis: 'Tidak',
+    riwayat_kronis_ket: '',
+    riwayat_rawat_inap: 'Tidak',
+    riwayat_rawat_inap_ket: '',
+    riwayat_alergi_obat: 'Tidak',
+    riwayat_alergi_obat_ket: '',
+    riwayat_merokok: 'Tidak',
+    riwayat_merokok_ket: '',
+    riwayat_alkohol: 'Tidak',
+    riwayat_alkohol_ket: '',
+    riwayat_obat_rutin: 'Tidak',
+    riwayat_obat_rutin_ket: '',
+    catatan_khusus: '',
+    fisik_keadaan_umum: 'Baik',
+    fisik_keadaan_umum_ket: '',
+    fisik_kepala_leher: '',
+    fisik_jantung: '',
+    fisik_paru: '',
+    fisik_abdomen: '',
+    fisik_ekstremitas: '',
+    fisik_kulit: '',
+    fisik_lain_lain: '',
     anamnesa: '',
     pemeriksaan_fisik: '',
     hpht: '',
     hpl: '',
     tfu: '',
     djj_anak: '',
-    diagnosa: '',
     alergi: '',
-    terapi: '',
-  });
+    kesimpulan_kelayakan: '',
+    saran_medis: '',
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
+
+  const getNadiKet = (nadi: number | null) => {
+    if (!nadi) return null;
+    return (nadi < 60 || nadi > 100) ? 
+      <span style={{ color: '#ef4444', fontWeight: 'bold' }}> (Abnormal)</span> : 
+      <span style={{ color: '#10b981' }}> (Normal)</span>;
+  };
+
+  const getSuhuKet = (suhu: number | null) => {
+    if (!suhu) return null;
+    return (suhu < 36.0 || suhu > 37.5) ? 
+      <span style={{ color: '#ef4444', fontWeight: 'bold' }}> (Abnormal)</span> : 
+      <span style={{ color: '#10b981' }}> (Normal)</span>;
+  };
+
+  const getNapasKet = (napas: number | null) => {
+    if (!napas) return null;
+    return (napas < 12 || napas > 20) ? 
+      <span style={{ color: '#ef4444', fontWeight: 'bold' }}> (Abnormal)</span> : 
+      <span style={{ color: '#10b981' }}> (Normal)</span>;
+  };
+
+  const getIMTKet = (imt: number | null) => {
+    if (!imt) return null;
+    if (imt < 18.5) return <span style={{ color: '#ef4444', fontWeight: 'bold' }}> (Kurus)</span>;
+    if (imt > 25.0) return <span style={{ color: '#ef4444', fontWeight: 'bold' }}> (Gemuk)</span>;
+    return <span style={{ color: '#10b981' }}> (Normal)</span>;
+  };
+
+  const getTensiKet = (sis: number | null, dia: number | null) => {
+    if (!sis || !dia) return null;
+    return (sis >= 140 || dia >= 90) ? 
+      <span style={{ color: '#ef4444', fontWeight: 'bold' }}> (Tinggi)</span> : 
+      <span style={{ color: '#10b981' }}> (Normal)</span>;
+  };
 
   useEffect(() => {
     const role = localStorage.getItem('user_role');
@@ -86,7 +188,7 @@ export default function DokterPage() {
     } else {
       fetchPatients();
       fetchObat();
-      
+
       // Auto-refresh every 30 seconds
       const refreshInterval = setInterval(() => {
         // Only refresh if no patient is selected
@@ -94,7 +196,7 @@ export default function DokterPage() {
           fetchPatients(currentPage, searchTerm);
         }
       }, 30000); // 30 seconds
-      
+
       return () => clearInterval(refreshInterval);
     }
   }, [router, selectedPatient, currentPage, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -104,12 +206,12 @@ export default function DokterPage() {
       setFetching(true);
       const tanggalPraktik = localStorage.getItem('tanggal_praktik');
       const lokasiId = localStorage.getItem('lokasi_id');
-      
+
       if (!tanggalPraktik) {
         setMessage({ type: 'error', text: 'Data login tidak lengkap. Silakan login ulang.' });
         return;
       }
-      
+
       // Dokter melihat pasien dengan status 'perawat' (sudah diperiksa perawat)
       // Filter berdasarkan lokasi yang dipilih saat login dengan pagination dan search
       let url = `/api/patients?status=perawat&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}&page=${page}&limit=${itemsPerPage}`;
@@ -119,10 +221,10 @@ export default function DokterPage() {
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
-      
+
       const response = await fetch(url);
       const result = await response.json();
-      
+
       if (result.success) {
         setPatients(result.data || []);
         if (result.pagination) {
@@ -137,7 +239,7 @@ export default function DokterPage() {
       setFetching(false);
     }
   };
-  
+
   useEffect(() => {
     // Debounce search
     const timer = setTimeout(() => {
@@ -147,11 +249,11 @@ export default function DokterPage() {
         setCurrentPage(1);
       }
     }, 500);
-    
+
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
-  
+
   useEffect(() => {
     fetchPatients(currentPage, searchTerm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,24 +263,24 @@ export default function DokterPage() {
     try {
       // Ambil lokasi_id dari localStorage untuk filter
       const lokasiId = localStorage.getItem('lokasi_id');
-      
+
       // Build URL dengan filter lokasi jika ada
       let url = '/api/obat';
       if (lokasiId) {
         url += `?lokasi_id=${lokasiId}`;
       }
-      
+
       const response = await fetch(url, {
         cache: 'no-store', // Prevent caching
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
       console.log('Obat fetch result:', result); // Debug log
-      
+
       if (result.success && result.data) {
         console.log('Obat list count:', result.data.length); // Debug log
         console.log('Obat list:', result.data); // Debug log
@@ -197,7 +299,7 @@ export default function DokterPage() {
 
   const handleSelectPatient = async (patient: Patient) => {
     const user_name = localStorage.getItem('user_name') || '';
-    
+
     // Update locked_by to track current doctor (without strict lock)
     // API will return warning if patient is being processed by another doctor
     try {
@@ -206,14 +308,14 @@ export default function DokterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_name, user_role: 'dokter' }),
       });
-      
+
       const lockResult = await lockResponse.json();
-      
+
       // Show warning if patient is being processed by another doctor
       if (lockResult.warning && lockResult.warning.locked_by) {
-        setMessage({ 
-          type: 'error', 
-          text: `⚠️ Peringatan: Pasien sedang diperiksa oleh ${lockResult.warning.locked_by}. Pastikan tidak terjadi duplikasi pemeriksaan.` 
+        setMessage({
+          type: 'error',
+          text: `⚠️ Peringatan: Pasien sedang diperiksa oleh ${lockResult.warning.locked_by}. Pastikan tidak terjadi duplikasi pemeriksaan.`
         });
       } else {
         setMessage(null);
@@ -222,18 +324,43 @@ export default function DokterPage() {
       console.error('Error updating locked_by:', error);
       // Continue anyway
     }
-    
+
     setSelectedPatient(patient);
     setFormData({
+      keluhan: patient.keluhan || '',
+      riwayat_malaria: patient.riwayat_malaria || 'Tidak',
+      riwayat_malaria_ket: patient.riwayat_malaria_ket || '',
+      riwayat_kronis: patient.riwayat_kronis || 'Tidak',
+      riwayat_kronis_ket: patient.riwayat_kronis_ket || '',
+      riwayat_rawat_inap: patient.riwayat_rawat_inap || 'Tidak',
+      riwayat_rawat_inap_ket: patient.riwayat_rawat_inap_ket || '',
+      riwayat_alergi_obat: patient.riwayat_alergi_obat || 'Tidak',
+      riwayat_alergi_obat_ket: patient.riwayat_alergi_obat_ket || '',
+      riwayat_merokok: patient.riwayat_merokok || 'Tidak',
+      riwayat_merokok_ket: patient.riwayat_merokok_ket || '',
+      riwayat_alkohol: patient.riwayat_alkohol || 'Tidak',
+      riwayat_alkohol_ket: patient.riwayat_alkohol_ket || '',
+      riwayat_obat_rutin: patient.riwayat_obat_rutin || 'Tidak',
+      riwayat_obat_rutin_ket: patient.riwayat_obat_rutin_ket || '',
+      catatan_khusus: patient.catatan_khusus || '',
+      fisik_keadaan_umum: patient.fisik_keadaan_umum || 'Baik',
+      fisik_keadaan_umum_ket: patient.fisik_keadaan_umum_ket || '',
+      fisik_kepala_leher: patient.fisik_kepala_leher || '',
+      fisik_jantung: patient.fisik_jantung || '',
+      fisik_paru: patient.fisik_paru || '',
+      fisik_abdomen: patient.fisik_abdomen || '',
+      fisik_ekstremitas: patient.fisik_ekstremitas || '',
+      fisik_kulit: patient.fisik_kulit || '',
+      fisik_lain_lain: patient.fisik_lain_lain || '',
       anamnesa: patient.anamnesa || '',
       pemeriksaan_fisik: patient.pemeriksaan_fisik || '',
       hpht: patient.hpht || '',
       hpl: patient.hpl || '',
       tfu: patient.tfu?.toString() || '',
       djj_anak: patient.djj_anak?.toString() || '',
-      diagnosa: patient.diagnosa || '',
-      alergi: (patient as any).alergi || '',
-      terapi: patient.terapi || '',
+      alergi: patient.alergi || '',
+      kesimpulan_kelayakan: patient.kesimpulan_kelayakan || '',
+      saran_medis: patient.saran_medis || '',
     });
     setResepItems([]);
     setMessage(null);
@@ -255,34 +382,34 @@ export default function DokterPage() {
   const handleResepChange = (index: number, field: keyof ResepItem, value: any) => {
     const updated = [...resepItems];
     const currentItem = updated[index];
-    
+
     // Validasi: tidak bisa memilih obat dengan stok 0
     if (field === 'obat_id' && value > 0) {
       const obat = obatList.find(o => o.id === value);
       if (obat && obat.stok === 0) {
-        setMessage({ 
-          type: 'error', 
-          text: `Stok ${obat.nama_obat} sudah habis. Pilih obat lain.` 
+        setMessage({
+          type: 'error',
+          text: `Stok ${obat.nama_obat} sudah habis. Pilih obat lain.`
         });
         return;
       }
     }
-    
+
     // Validasi jumlah tidak boleh melebihi stok
     if (field === 'jumlah' && currentItem.obat_id > 0 && value !== '') {
       const jumlahNum = typeof value === 'string' ? parseInt(value) : value;
       if (!isNaN(jumlahNum as number)) {
         const obat = obatList.find(o => o.id === currentItem.obat_id);
         if (obat && jumlahNum > obat.stok) {
-          setMessage({ 
-            type: 'error', 
-            text: `Jumlah ${obat.nama_obat} tidak boleh melebihi stok tersedia (${obat.stok})` 
+          setMessage({
+            type: 'error',
+            text: `Jumlah ${obat.nama_obat} tidak boleh melebihi stok tersedia (${obat.stok})`
           });
           return;
         }
       }
     }
-    
+
     updated[index] = { ...updated[index], [field]: value };
     setResepItems(updated);
     setMessage(null);
@@ -304,31 +431,31 @@ export default function DokterPage() {
       if (item.obat_id > 0) {
         const obat = obatList.find(o => o.id === item.obat_id);
         if (!obat) {
-          setMessage({ 
-            type: 'error', 
-            text: 'Obat tidak ditemukan. Silakan refresh halaman.' 
+          setMessage({
+            type: 'error',
+            text: 'Obat tidak ditemukan. Silakan refresh halaman.'
           });
           return;
         }
         if (obat.stok === 0) {
-          setMessage({ 
-            type: 'error', 
-            text: `Stok ${obat.nama_obat} sudah habis. Hapus dari resep atau pilih obat lain.` 
+          setMessage({
+            type: 'error',
+            text: `Stok ${obat.nama_obat} sudah habis. Hapus dari resep atau pilih obat lain.`
           });
           return;
         }
         const jumlahNum = typeof item.jumlah === 'string' ? parseInt(item.jumlah) : item.jumlah;
         if (!jumlahNum || jumlahNum <= 0) {
-          setMessage({ 
-            type: 'error', 
-            text: `Jumlah ${obat.nama_obat} harus diisi dan lebih dari 0` 
+          setMessage({
+            type: 'error',
+            text: `Jumlah ${obat.nama_obat} harus diisi dan lebih dari 0`
           });
           return;
         }
         if (jumlahNum > obat.stok) {
-          setMessage({ 
-            type: 'error', 
-            text: `Stok ${obat.nama_obat} tidak cukup. Stok tersedia: ${obat.stok}, jumlah yang diminta: ${jumlahNum}` 
+          setMessage({
+            type: 'error',
+            text: `Stok ${obat.nama_obat} tidak cukup. Stok tersedia: ${obat.stok}, jumlah yang diminta: ${jumlahNum}`
           });
           return;
         }
@@ -340,18 +467,18 @@ export default function DokterPage() {
 
     try {
       const user_name = localStorage.getItem('user_name') || '';
-      
+
       // Convert resepItems untuk memastikan jumlah adalah number
       const resepItemsToSave = resepItems.map(item => ({
         ...item,
         jumlah: typeof item.jumlah === 'string' ? parseInt(item.jumlah) || 1 : item.jumlah
       }));
-      
+
       // Determine status based on whether there are resep items
       // If no resep → status = 'selesai' (patient is done)
       // If has resep → status = 'farmasi' (patient goes to pharmacy)
       const finalStatus = resepItemsToSave.length > 0 ? 'farmasi' : 'selesai';
-      
+
       // Update patient data
       const updateResponse = await fetch(`/api/patients/${selectedPatient.id}`, {
         method: 'PUT',
@@ -359,15 +486,9 @@ export default function DokterPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          anamnesa: formData.anamnesa || null,
-          pemeriksaan_fisik: formData.pemeriksaan_fisik || null,
-          hpht: formData.hpht || null,
-          hpl: formData.hpl || null,
+          ...formData,
           tfu: parseFloat(formData.tfu) || null,
           djj_anak: parseInt(formData.djj_anak) || null,
-          diagnosa: formData.diagnosa || null,
-          alergi: formData.alergi || null,
-          terapi: formData.terapi || null,
           resep: resepItemsToSave.length > 0 ? JSON.stringify(resepItemsToSave) : null,
           dokter_pemeriksa: user_name,
           status: finalStatus,
@@ -397,36 +518,61 @@ export default function DokterPage() {
                 aturan_pakai: item.aturan_pakai,
               }),
             });
-            
+
             const resepResult = await resepResponse.json();
             if (!resepResult.success) {
               resepErrors.push(resepResult.message || 'Gagal menyimpan resep');
             }
           }
         }
-        
+
         if (resepErrors.length > 0) {
           throw new Error(resepErrors.join('; '));
         }
       }
 
-      const successMessage = resepItemsToSave.length > 0 
+      const successMessage = resepItemsToSave.length > 0
         ? 'Data pemeriksaan dokter berhasil disimpan! Pasien akan dikirim ke farmasi.'
         : 'Data pemeriksaan dokter berhasil disimpan! Pasien dinyatakan selesai berobat.';
       setMessage({ type: 'success', text: successMessage });
       setFormData({
+        keluhan: '',
+        riwayat_malaria: 'Tidak',
+        riwayat_malaria_ket: '',
+        riwayat_kronis: 'Tidak',
+        riwayat_kronis_ket: '',
+        riwayat_rawat_inap: 'Tidak',
+        riwayat_rawat_inap_ket: '',
+        riwayat_alergi_obat: 'Tidak',
+        riwayat_alergi_obat_ket: '',
+        riwayat_merokok: 'Tidak',
+        riwayat_merokok_ket: '',
+        riwayat_alkohol: 'Tidak',
+        riwayat_alkohol_ket: '',
+        riwayat_obat_rutin: 'Tidak',
+        riwayat_obat_rutin_ket: '',
+        catatan_khusus: '',
+        fisik_keadaan_umum: 'Baik',
+        fisik_keadaan_umum_ket: '',
+        fisik_kepala_leher: '',
+        fisik_jantung: '',
+        fisik_paru: '',
+        fisik_abdomen: '',
+        fisik_ekstremitas: '',
+        fisik_kulit: '',
+        fisik_lain_lain: '',
         anamnesa: '',
         pemeriksaan_fisik: '',
         hpht: '',
         hpl: '',
         tfu: '',
         djj_anak: '',
-        diagnosa: '',
         alergi: '',
-        terapi: '',
+        kesimpulan_kelayakan: '',
+        saran_medis: '',
       });
       setResepItems([]);
-      
+
       // Clear locked_by after submit
       if (selectedPatient) {
         try {
@@ -440,7 +586,7 @@ export default function DokterPage() {
           console.error('Error clearing locked_by:', error);
         }
       }
-      
+
       setSelectedPatient(null);
       fetchPatients(currentPage, searchTerm);
       fetchObat(); // Refresh daftar obat untuk menampilkan stok terbaru
@@ -485,31 +631,31 @@ export default function DokterPage() {
           <p className={styles.empty}>Tidak ada pasien yang menunggu pemeriksaan dokter{searchTerm ? ` dengan kata kunci "${searchTerm}"` : ''}</p>
         ) : (
           <>
-          <div className={styles.patientList}>
-            {patients.map((patient) => (
-              <div
-                key={patient.id}
-                className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
-                onClick={() => handleSelectPatient(patient)}
-              >
-                <div className={styles.patientInfo}>
+            <div className={styles.patientList}>
+              {patients.map((patient) => (
+                <div
+                  key={patient.id}
+                  className={`${styles.patientCard} ${selectedPatient?.id === patient.id ? styles.selected : ''}`}
+                  onClick={() => handleSelectPatient(patient)}
+                >
+                  <div className={styles.patientInfo}>
                     {patient.no_registrasi && (
                       <span style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '0.9em', marginBottom: '4px', display: 'block' }}>
                         No. Registrasi: {patient.no_registrasi}
                       </span>
                     )}
-                  <strong>{patient.nama}</strong>
+                    <strong>{patient.nama}</strong>
                     <span>Usia: {formatAge(patient.usia, patient.tanggal_lahir)} | {patient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
-                  {patient.keluhan && (
-                    <span className={styles.keluhan}>Keluhan: {patient.keluhan}</span>
-                  )}
-                  {patient.tensi_darah_sistol && patient.tensi_darah_diastol && (
-                    <span>Tensi: {patient.tensi_darah_sistol}/{patient.tensi_darah_diastol} mmHg</span>
-                  )}
+                    {patient.keluhan && (
+                      <span className={styles.keluhan}>Keluhan: {patient.keluhan}</span>
+                    )}
+                    {patient.tensi_darah_sistol && patient.tensi_darah_diastol && (
+                      <span>Tensi: {patient.tensi_darah_sistol}/{patient.tensi_darah_diastol} mmHg</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', padding: '10px', borderTop: '1px solid #e5e7eb' }}>
                 <div style={{ color: '#6b7280', fontSize: '14px' }}>
@@ -564,119 +710,240 @@ export default function DokterPage() {
                 <ul>
                   {selectedPatient.tinggi_badan && <li>TB: {selectedPatient.tinggi_badan} cm</li>}
                   {selectedPatient.berat_badan && <li>BB: {selectedPatient.berat_badan} kg</li>}
+                  {selectedPatient.imt && <li>IMT: {selectedPatient.imt} kg/m²{getIMTKet(selectedPatient.imt)}</li>}
                   {selectedPatient.tensi_darah_sistol && selectedPatient.tensi_darah_diastol && (
-                    <li>Tensi: {selectedPatient.tensi_darah_sistol}/{selectedPatient.tensi_darah_diastol} mmHg</li>
+                    <li>Tensi: {selectedPatient.tensi_darah_sistol}/{selectedPatient.tensi_darah_diastol} mmHg{getTensiKet(selectedPatient.tensi_darah_sistol, selectedPatient.tensi_darah_diastol)}</li>
                   )}
+                  {selectedPatient.denyut_nadi && <li>Nadi: {selectedPatient.denyut_nadi} x/menit{getNadiKet(selectedPatient.denyut_nadi)}</li>}
+                  {selectedPatient.suhu_tubuh && <li>Suhu: {selectedPatient.suhu_tubuh} °C{getSuhuKet(selectedPatient.suhu_tubuh)}</li>}
+                  {selectedPatient.laju_pernapasan && <li>Napas: {selectedPatient.laju_pernapasan} x/menit{getNapasKet(selectedPatient.laju_pernapasan)}</li>}
                   {selectedPatient.kolesterol && <li>Kolesterol: {selectedPatient.kolesterol} mg/dL</li>}
                   {selectedPatient.gds && <li>GDS: {selectedPatient.gds} mg/dL</li>}
                   {selectedPatient.as_urat && <li>As Urat: {selectedPatient.as_urat} mg/dL</li>}
-                  {selectedPatient.keluhan && <li>Keluhan: {selectedPatient.keluhan}</li>}
                 </ul>
               </div>
             </div>
           </div>
 
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>ANAMNESA</h2>
-            <div className={styles.formGrid}>
-              <div className={styles.formGroupFull}>
-                <label htmlFor="anamnesa">Anamnesa</label>
-                <textarea
-                  id="anamnesa"
-                  name="anamnesa"
-                  value={formData.anamnesa}
-                  onChange={handleChange}
-                  rows={4}
-                  className={styles.textarea}
-                />
-              </div>
+            <h2 className={styles.sectionTitle}>3. ANAMNESA & RIWAYAT PENYAKIT</h2>
+            <div className={styles.formGroupFull} style={{ marginBottom: '20px' }}>
+              <label><strong>A. Keluhan Saat Ini (jika ada)</strong></label>
+              <textarea
+                name="keluhan"
+                value={formData.keluhan}
+                onChange={handleChange}
+                rows={3}
+                className={styles.textarea}
+                placeholder="Masukkan keluhan saat ini..."
+              />
+            </div>
+
+            <div className={styles.tableContainer}>
+              <label><strong>B. Riwayat Penyakit Dahulu</strong></label>
+              <table className={styles.examTable}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '50px' }}>No.</th>
+                    <th>Pertanyaan</th>
+                    <th style={{ width: '150px' }}>Ya / Tidak</th>
+                    <th>Keterangan (jika Ya)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { id: 'riwayat_malaria', label: 'Riwayat demam berulang / malaria sebelumnya' },
+                    { id: 'riwayat_kronis', label: 'Riwayat penyakit kronis (jantung, paru, ginjal, hati, dll)' },
+                    { id: 'riwayat_rawat_inap', label: 'Riwayat rawat inap / operasi' },
+                    { id: 'riwayat_alergi_obat', label: 'Riwayat alergi obat / makanan / lainnya' },
+                    { id: 'riwayat_merokok', label: 'Riwayat merokok (Lama, Jumlah/hari)' },
+                    { id: 'riwayat_alkohol', label: 'Riwayat konsumsi alkohol (Lama, Frekuensi)' },
+                    { id: 'riwayat_obat_rutin', label: 'Penggunaan obat rutin (Sebutkan)' },
+                  ].map((item, index) => (
+                    <tr key={item.id}>
+                      <td style={{ textAlign: 'center' }}>{index + 1}.</td>
+                      <td>{item.label}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                          <label style={{ cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name={item.id}
+                              value="Ya"
+                              checked={formData[item.id as keyof typeof formData] === 'Ya'}
+                              onChange={handleChange}
+                            /> Ya
+                          </label>
+                          <label style={{ cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name={item.id}
+                              value="Tidak"
+                              checked={formData[item.id as keyof typeof formData] === 'Tidak'}
+                              onChange={handleChange}
+                            /> Tidak
+                          </label>
+                        </div>
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          name={`${item.id}_ket`}
+                          value={formData[`${item.id}_ket` as keyof typeof formData]}
+                          onChange={handleChange}
+                          className={styles.tableInput}
+                          placeholder="Masukkan keterangan..."
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className={styles.formGroupFull} style={{ marginTop: '20px' }}>
+              <label><strong>CATATAN KHUSUS (WAJIB DIISI)</strong>: Berikan perhatian khusus pada riwayat penyakit berikut dan kendalinya: Gangguan Hati Berat, DM tidak terkontrol, HT tidak terkontrol.</label>
+              <textarea
+                name="catatan_khusus"
+                value={formData.catatan_khusus}
+                onChange={handleChange}
+                rows={3}
+                className={styles.textarea}
+                placeholder="Rincian / Catatan..."
+              />
             </div>
           </section>
 
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>PEMERIKSAAN FISIK</h2>
-            <div className={styles.formGrid}>
-              <div className={styles.formGroupFull}>
-                <label htmlFor="pemeriksaan_fisik">Pemeriksaan Fisik</label>
-                <textarea
-                  id="pemeriksaan_fisik"
-                  name="pemeriksaan_fisik"
-                  value={formData.pemeriksaan_fisik}
-                  onChange={handleChange}
-                  rows={4}
-                  className={styles.textarea}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="hpht">HPHT (Tanggal)</label>
-                <input
-                  type="date"
-                  id="hpht"
-                  name="hpht"
-                  value={formData.hpht}
-                  onChange={handleChange}
-                  className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="hpl">HPL (Tanggal)</label>
-                <input
-                  type="date"
-                  id="hpl"
-                  name="hpl"
-                  value={formData.hpl}
-                  onChange={handleChange}
-                  className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="tfu">TFU (cm)</label>
-                <input
-                  type="number"
-                  id="tfu"
-                  name="tfu"
-                  value={formData.tfu}
-                  onChange={handleChange}
-                  step="0.1"
-                  className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="djj_anak">DJJ Anak (detak/menit)</label>
-                <input
-                  type="number"
-                  id="djj_anak"
-                  name="djj_anak"
-                  value={formData.djj_anak}
-                  onChange={handleChange}
-                  className={styles.input}
-                />
-              </div>
+            <h2 className={styles.sectionTitle}>4. PEMERIKSAAN FISIK (RELEVAN)</h2>
+            <div className={styles.tableContainer}>
+              <table className={styles.examTable}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '150px' }}>Sistem/Organ</th>
+                    <th>Pemeriksaan</th>
+                    <th style={{ width: '200px' }}>Hasil</th>
+                    <th>Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Keadaan Umum</strong></td>
+                    <td>Kesadaran, tampak sakit</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <label style={{ cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            name="fisik_keadaan_umum"
+                            value="Baik"
+                            checked={formData.fisik_keadaan_umum === 'Baik'}
+                            onChange={handleChange}
+                          /> Baik
+                        </label>
+                        <label style={{ cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            name="fisik_keadaan_umum"
+                            value="Kurang Baik"
+                            checked={formData.fisik_keadaan_umum === 'Kurang Baik'}
+                            onChange={handleChange}
+                          /> Kurang Baik
+                        </label>
+                      </div>
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        name="fisik_keadaan_umum_ket"
+                        value={formData.fisik_keadaan_umum_ket}
+                        onChange={handleChange}
+                        className={styles.tableInput}
+                        placeholder="..."
+                      />
+                    </td>
+                  </tr>
+                  {[
+                    { id: 'fisik_kepala_leher', label: 'Kepala & Leher', detail: 'Mata, THT, kelenjar getah bening, tiroid' },
+                    { id: 'fisik_jantung', label: 'Jantung', detail: 'Inspeksi, auskultasi' },
+                    { id: 'fisik_paru', label: 'Paru', detail: 'Inspeksi, perkusi, auskultasi' },
+                    { id: 'fisik_abdomen', label: 'Abdomen', detail: 'Inspeksi, palpasi, hepar, lien' },
+                    { id: 'fisik_ekstremitas', label: 'Ekstremitas', detail: 'Edema, deformitas, kekuatan otot' },
+                    { id: 'fisik_kulit', label: 'Kulit', detail: 'Lesi, ruam, tanda infeksi' },
+                    { id: 'fisik_lain_lain', label: 'Lain-lain', detail: 'Temuan klinis lain yang relevan' },
+                  ].map((item) => (
+                    <tr key={item.id}>
+                      <td><strong>{item.label}</strong></td>
+                      <td>{item.detail}</td>
+                      <td colSpan={2}>
+                        <input
+                          type="text"
+                          name={item.id}
+                          value={formData[item.id as keyof typeof formData]}
+                          onChange={handleChange}
+                          className={styles.tableInput}
+                          placeholder="Hasil & Keterangan..."
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
 
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>DIAGNOSA</h2>
-            <div className={styles.formGrid}>
-              <div className={styles.formGroupFull}>
-                <label htmlFor="diagnosa">Diagnosa</label>
-                <textarea
-                  id="diagnosa"
-                  name="diagnosa"
-                  value={formData.diagnosa}
+            <h2 className={styles.sectionTitle}>5. KESIMPULAN KELAYAKAN TUGAS</h2>
+            <p>Berdasarkan hasil pemeriksaan, yang bersangkutan dinyatakan:</p>
+            <div className={styles.fitnessContainer} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '20px' }}>
+              <label className={`${styles.fitnessCard} ${formData.kesimpulan_kelayakan === 'FIT' ? styles.active : ''}`}>
+                <input
+                  type="radio"
+                  name="kesimpulan_kelayakan"
+                  value="FIT"
+                  checked={formData.kesimpulan_kelayakan === 'FIT'}
                   onChange={handleChange}
-                  rows={3}
-                  className={styles.textarea}
                 />
-              </div>
+                <div className={styles.fitnessTitle}>FIT (Layak)</div>
+                <div className={styles.fitnessDesc}>Dapat melaksanakan penugasan tanpa pembatasan.</div>
+              </label>
+              <label className={`${styles.fitnessCard} ${formData.kesimpulan_kelayakan === 'FIT WITH NOTE' ? styles.active : ''}`}>
+                <input
+                  type="radio"
+                  name="kesimpulan_kelayakan"
+                  value="FIT WITH NOTE"
+                  checked={formData.kesimpulan_kelayakan === 'FIT WITH NOTE'}
+                  onChange={handleChange}
+                />
+                <div className={styles.fitnessTitle}>FIT WITH NOTE (Layak dengan Catatan)</div>
+                <div className={styles.fitnessDesc}>Dapat melaksanakan penugasan dengan catatan / syarat tertentu (terlampir).</div>
+              </label>
+              <label className={`${styles.fitnessCard} ${formData.kesimpulan_kelayakan === 'UNFIT' ? styles.active : ''}`}>
+                <input
+                  type="radio"
+                  name="kesimpulan_kelayakan"
+                  value="UNFIT"
+                  checked={formData.kesimpulan_kelayakan === 'UNFIT'}
+                  onChange={handleChange}
+                />
+                <div className={styles.fitnessTitle}>UNFIT (Tidak Layak)</div>
+                <div className={styles.fitnessDesc}>Tidak layak melaksanakan penugasan untuk sementara / permanen.</div>
+              </label>
+            </div>
+            <div className={styles.formGroupFull}>
+              <label><strong>Catatan / Saran Medis:</strong></label>
+              <textarea
+                name="saran_medis"
+                value={formData.saran_medis}
+                onChange={handleChange}
+                rows={3}
+                className={styles.textarea}
+                placeholder="Masukkan saran medis..."
+              />
             </div>
           </section>
 
-          <section className={styles.section}>
+          {/* <section className={styles.section}>
             <h2 className={styles.sectionTitle}>ALERGI</h2>
             <div className={styles.formGrid}>
               <div className={styles.formGroupFull}>
@@ -692,26 +959,9 @@ export default function DokterPage() {
                 />
               </div>
             </div>
-          </section>
+          </section> */}
 
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>TERAPI</h2>
-            <div className={styles.formGrid}>
-              <div className={styles.formGroupFull}>
-                <label htmlFor="terapi">Terapi</label>
-                <textarea
-                  id="terapi"
-                  name="terapi"
-                  value={formData.terapi}
-                  onChange={handleChange}
-                  rows={3}
-                  className={styles.textarea}
-                />
-              </div>
-            </div>
-          </section>
-
-          <section className={styles.section}>
+          {/* <section className={styles.section}>
             <div className={styles.resepHeader}>
               <h2 className={styles.sectionTitle}>RESEP OBAT</h2>
               <div className={styles.resepHeaderInfo}>
@@ -808,7 +1058,7 @@ export default function DokterPage() {
                 })}
               </div>
             )}
-          </section>
+          </section> */}
 
           <div className={styles.formActions}>
             <button
@@ -834,19 +1084,9 @@ export default function DokterPage() {
                     console.error('Error clearing locked_by:', error);
                   }
                 }
-                
+
                 setSelectedPatient(null);
-                setFormData({
-                  anamnesa: '',
-                  pemeriksaan_fisik: '',
-                  hpht: '',
-                  hpl: '',
-                  tfu: '',
-                  djj_anak: '',
-                  diagnosa: '',
-                  alergi: '',
-                  terapi: '',
-                });
+                setFormData(initialFormData);
                 setResepItems([]);
               }}
               className={styles.btnReset}
@@ -858,7 +1098,7 @@ export default function DokterPage() {
       )}
 
       <div className={styles.footer}>
-        <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>
+        <p>Copyright © {new Date().getFullYear()} PT Doctor PHC Indonesia. All rights reserved.</p>
       </div>
     </div>
   );

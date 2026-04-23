@@ -46,8 +46,8 @@ export default function LoginPage() {
         if (!formData.lokasi_id) {
           setDokterList([]);
           return;
-    }
-        
+        }
+
         try {
           setFetchingDokter(true);
           const response = await fetch('/api/dokter?aktif=true');
@@ -55,7 +55,7 @@ export default function LoginPage() {
           if (result.success) {
             // Filter dokter berdasarkan lokasi_id yang dipilih
             // Dokter tanpa lokasi (lokasi_id = null) akan muncul di semua lokasi
-            const filteredDokter = (result.data || []).filter((dokter: Dokter) => 
+            const filteredDokter = (result.data || []).filter((dokter: Dokter) =>
               !dokter.lokasi_id || dokter.lokasi_id.toString() === formData.lokasi_id
             );
             setDokterList(filteredDokter);
@@ -66,7 +66,7 @@ export default function LoginPage() {
           setFetchingDokter(false);
         }
       };
-      
+
       fetchDokterData();
     } else {
       setDokterList([]);
@@ -81,7 +81,7 @@ export default function LoginPage() {
       setDokterList([]);
       return;
     }
-    
+
     try {
       setFetchingDokter(true);
       const response = await fetch('/api/dokter?aktif=true');
@@ -89,7 +89,7 @@ export default function LoginPage() {
       if (result.success) {
         // Filter dokter berdasarkan lokasi_id yang dipilih
         // Dokter tanpa lokasi (lokasi_id = null) akan muncul di semua lokasi
-        const filteredDokter = (result.data || []).filter((dokter: Dokter) => 
+        const filteredDokter = (result.data || []).filter((dokter: Dokter) =>
           !dokter.lokasi_id || dokter.lokasi_id.toString() === formData.lokasi_id
         );
         setDokterList(filteredDokter);
@@ -169,7 +169,7 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validasi: Lokasi harus dipilih dulu
     if (!formData.lokasi_id) {
       alert('Pilih Lokasi Baksos terlebih dahulu!');
@@ -238,11 +238,12 @@ export default function LoginPage() {
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.logoSection}>
-            <Image src="/images/logo-ybm.png" alt="Logo YBM PLN" width={150} height={100} className={styles.logo} />
-            
+            <Image src="/images/logo-phc.png" alt="Logo YBM PLN" width={300} height={200} className={styles.logo} />
+
           </div>
           <div className={styles.header}>
-            <h1 className={styles.title}>APLIKASI PEMERIKSAAN KESEHATAN DAN PENGOBATAN GRATIS</h1>
+            <h1 className={styles.title}>APLIKASI SCREENING KESEHATAN</h1>
+            <h3 className={styles.title1}>PRA-PENUGASAN KE DAERAH ENDEMIS MALARIA</h3>
             <p className={styles.subtitle}>Aplikasi ini digunakan untuk mempermudah pemeriksaan kesehatan dan pengobatan gratis</p>
           </div>
 
@@ -292,26 +293,26 @@ export default function LoginPage() {
             </div>
 
             {formData.lokasi_id && (
-            <div className={styles.formGroup}>
-              <label htmlFor="role">
-                Pilih Role <span className={styles.required}>*</span>
-              </label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                required
-                className={styles.input}
+              <div className={styles.formGroup}>
+                <label htmlFor="role">
+                  Pilih Role <span className={styles.required}>*</span>
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
                   disabled={!formData.lokasi_id}
-              >
-                <option value="">Pilih Role</option>
-                <option value="admin">Admin Pendaftaran</option>
-                <option value="perawat">Perawat</option>
-                <option value="dokter">Dokter</option>
-                <option value="farmasi">Farmasi</option>
-              </select>
-            </div>
+                >
+                  <option value="">Pilih Role</option>
+                  <option value="admin">Admin Pendaftaran</option>
+                  <option value="perawat">Perawat</option>
+                  <option value="dokter">Dokter</option>
+                  <option value="farmasi">Farmasi</option>
+                </select>
+              </div>
             )}
 
             {formData.role === 'dokter' && formData.lokasi_id ? (
@@ -375,20 +376,20 @@ export default function LoginPage() {
             )}
 
             {formData.lokasi_id && formData.role && (
-            <div className={styles.formGroup}>
+              <div className={styles.formGroup}>
                 <label htmlFor="tanggal_praktik">
                   Tanggal Praktik <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="date"
+                </label>
+                <input
+                  type="date"
                   id="tanggal_praktik"
                   name="tanggal_praktik"
                   value={formData.tanggal_praktik}
-                onChange={handleChange}
-                required
-                className={styles.input}
-              />
-            </div>
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+              </div>
             )}
 
             <div className={styles.formActions}>
@@ -404,7 +405,7 @@ export default function LoginPage() {
         </div>
       </div>
       <div className={styles.footer}>
-        <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>
+        <p>Copyright © {new Date().getFullYear()} PT Doctor PHC Indonesia. All rights reserved.</p>
       </div>
     </>
   );

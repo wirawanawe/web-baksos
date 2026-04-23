@@ -15,7 +15,25 @@ interface Patient {
   jenis_kelamin: string;
   usia: number;
   tanggal_lahir?: string;
+  tempat_lahir?: string | null;
+  jabatan?: string | null;
+  unit?: string | null;
   alamat: string;
+  email?: string | null;
+  lokasi_penugasan?: string | null;
+  tanggal_mulai_tugas?: string | null;
+  durasi_penugasan?: string | null;
+  tinggi_badan?: number | null;
+  berat_badan?: number | null;
+  imt?: number | null;
+  tensi_darah_sistol?: number | null;
+  tensi_darah_diastol?: number | null;
+  denyut_nadi?: number | null;
+  suhu_tubuh?: number | null;
+  laju_pernapasan?: number | null;
+  kolesterol?: number | null;
+  gds?: number | null;
+  as_urat?: number | null;
   dokter_pemeriksa: string | null;
   status: string;
   locked_by?: string | null;
@@ -35,16 +53,21 @@ export default function PerawatPage() {
   const [totalPatients, setTotalPatients] = useState(0);
   const itemsPerPage = 10;
   
-  const [formData, setFormData] = useState({
+  const initialFormData = {
     tinggi_badan: '',
     berat_badan: '',
+    imt: '',
     tensi_darah_sistol: '',
     tensi_darah_diastol: '',
+    denyut_nadi: '',
+    suhu_tubuh: '',
+    laju_pernapasan: '',
     kolesterol: '',
     gds: '',
     as_urat: '',
-    keluhan: '',
-  });
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
 
   const fetchPatients = async (page: number = currentPage, search: string = searchTerm) => {
     try {
@@ -57,7 +80,6 @@ export default function PerawatPage() {
         return;
       }
       
-      // Build URL dengan filter dokter, lokasi, pagination, dan search
       let url = `/api/patients?status=pendaftaran&startDate=${tanggalPraktik}&endDate=${tanggalPraktik}&page=${page}&limit=${itemsPerPage}`;
       if (lokasiId) {
         url += `&lokasi_id=${lokasiId}`;
@@ -84,7 +106,6 @@ export default function PerawatPage() {
   };
   
   useEffect(() => {
-    // Debounce search
     const timer = setTimeout(() => {
       if (currentPage === 1) {
         fetchPatients(1, searchTerm);
@@ -109,13 +130,11 @@ export default function PerawatPage() {
     } else {
       fetchPatients();
       
-      // Auto-refresh every 30 seconds
       const refreshInterval = setInterval(() => {
-        // Only refresh if no patient is selected
         if (!selectedPatient) {
           fetchPatients(currentPage, searchTerm);
         }
-      }, 30000); // 30 seconds
+      }, 30000);
       
       return () => clearInterval(refreshInterval);
     }
@@ -123,24 +142,43 @@ export default function PerawatPage() {
   }, [router, selectedPatient, currentPage, searchTerm]);
 
   const handleSelectPatient = (patient: Patient) => {
-    // No lock mechanism for perawat - can select any patient
     setSelectedPatient(patient);
     setFormData({
-      tinggi_badan: '',
-      berat_badan: '',
-      tensi_darah_sistol: '',
-      tensi_darah_diastol: '',
-      kolesterol: '',
-      gds: '',
-      as_urat: '',
-      keluhan: '',
+      tinggi_badan: patient.tinggi_badan?.toString() || '',
+      berat_badan: patient.berat_badan?.toString() || '',
+      imt: patient.imt?.toString() || '',
+      tensi_darah_sistol: patient.tensi_darah_sistol?.toString() || '',
+      tensi_darah_diastol: patient.tensi_darah_diastol?.toString() || '',
+      denyut_nadi: patient.denyut_nadi?.toString() || '',
+      suhu_tubuh: patient.suhu_tubuh?.toString() || '',
+      laju_pernapasan: patient.laju_pernapasan?.toString() || '',
+      kolesterol: patient.kolesterol?.toString() || '',
+      gds: patient.gds?.toString() || '',
+      as_urat: patient.as_urat?.toString() || '',
     });
     setMessage(null);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      
+      if (name === 'tinggi_badan' || name === 'berat_badan') {
+        const tb = parseFloat(name === 'tinggi_badan' ? value : prev.tinggi_badan);
+        const bb = parseFloat(name === 'berat_badan' ? value : prev.berat_badan);
+        
+        if (tb > 0 && bb > 0) {
+          const tbMeter = tb / 100;
+          const imt = bb / (tbMeter * tbMeter);
+          newData.imt = imt.toFixed(2);
+        } else {
+          newData.imt = '';
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -163,8 +201,12 @@ export default function PerawatPage() {
           ...formData,
           tinggi_badan: parseFloat(formData.tinggi_badan) || null,
           berat_badan: parseFloat(formData.berat_badan) || null,
+          imt: parseFloat(formData.imt) || null,
           tensi_darah_sistol: parseInt(formData.tensi_darah_sistol) || null,
           tensi_darah_diastol: parseInt(formData.tensi_darah_diastol) || null,
+          denyut_nadi: parseInt(formData.denyut_nadi) || null,
+          suhu_tubuh: parseFloat(formData.suhu_tubuh) || null,
+          laju_pernapasan: parseInt(formData.laju_pernapasan) || null,
           kolesterol: parseFloat(formData.kolesterol) || null,
           gds: parseFloat(formData.gds) || null,
           as_urat: parseFloat(formData.as_urat) || null,
@@ -179,12 +221,15 @@ export default function PerawatPage() {
         setFormData({
           tinggi_badan: '',
           berat_badan: '',
+          imt: '',
           tensi_darah_sistol: '',
           tensi_darah_diastol: '',
+          denyut_nadi: '',
+          suhu_tubuh: '',
+          laju_pernapasan: '',
           kolesterol: '',
           gds: '',
           as_urat: '',
-          keluhan: '',
         });
         setSelectedPatient(null);
         fetchPatients(currentPage, searchTerm);
@@ -308,107 +353,216 @@ export default function PerawatPage() {
           </div>
 
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>PEMERIKSAAN VITAL</h2>
+            <h2 className={styles.sectionTitle}>PEMERIKSAAN TANDA VITAL & ANTROPOMETRI</h2>
+            
+            <div className={styles.tableContainer} style={{ overflowX: 'auto', marginBottom: '20px' }}>
+              <table className={styles.vitalTable} style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ddd' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3f4f6' }}>
+                    <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'left' }}>Parameter</th>
+                    <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center' }}>Hasil</th>
+                    <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center' }}>Satuan</th>
+                    <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'center' }}>Nilai Rujukan</th>
+                    <th style={{ border: '1px solid #ddd', padding: '12px', textAlign: 'left' }}>Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Tekanan Darah (Tensi)</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                        <input
+                          type="number"
+                          name="tensi_darah_sistol"
+                          value={formData.tensi_darah_sistol}
+                          onChange={handleChange}
+                          placeholder="Sis"
+                          style={{ width: '60px', padding: '5px', textAlign: 'center' }}
+                        />
+                        <span>/</span>
+                        <input
+                          type="number"
+                          name="tensi_darah_diastol"
+                          value={formData.tensi_darah_diastol}
+                          onChange={handleChange}
+                          placeholder="Dia"
+                          style={{ width: '60px', padding: '5px', textAlign: 'center' }}
+                        />
+                      </div>
+                    </td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>mmHg</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>&lt; 140/90 mmHg</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                      {formData.tensi_darah_sistol && formData.tensi_darah_diastol && (
+                        (parseInt(formData.tensi_darah_sistol) >= 140 || parseInt(formData.tensi_darah_diastol) >= 90) ? 
+                        <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Tinggi</span> : 
+                        <span style={{ color: '#10b981' }}>Normal</span>
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Denyut Nadi</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        name="denyut_nadi"
+                        value={formData.denyut_nadi}
+                        onChange={handleChange}
+                        style={{ width: '80px', padding: '5px', textAlign: 'center' }}
+                      />
+                    </td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>x/menit</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>60 - 100 x/menit</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                      {formData.denyut_nadi && (
+                        (parseInt(formData.denyut_nadi) < 60 || parseInt(formData.denyut_nadi) > 100) ? 
+                        <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Abnormal</span> : 
+                        <span style={{ color: '#10b981' }}>Normal</span>
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Suhu Tubuh</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        step="0.1"
+                        name="suhu_tubuh"
+                        value={formData.suhu_tubuh}
+                        onChange={handleChange}
+                        style={{ width: '80px', padding: '5px', textAlign: 'center' }}
+                      />
+                    </td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>°C</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>36,0 - 37,5 °C</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                      {formData.suhu_tubuh && (
+                        (parseFloat(formData.suhu_tubuh) < 36.0 || parseFloat(formData.suhu_tubuh) > 37.5) ? 
+                        <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Abnormal</span> : 
+                        <span style={{ color: '#10b981' }}>Normal</span>
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Laju Pernapasan</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        name="laju_pernapasan"
+                        value={formData.laju_pernapasan}
+                        onChange={handleChange}
+                        style={{ width: '80px', padding: '5px', textAlign: 'center' }}
+                      />
+                    </td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>x/menit</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>12 - 20 x/menit</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                      {formData.laju_pernapasan && (
+                        (parseInt(formData.laju_pernapasan) < 12 || parseInt(formData.laju_pernapasan) > 20) ? 
+                        <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Abnormal</span> : 
+                        <span style={{ color: '#10b981' }}>Normal</span>
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Berat Badan (BB)</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        step="0.1"
+                        name="berat_badan"
+                        value={formData.berat_badan}
+                        onChange={handleChange}
+                        style={{ width: '80px', padding: '5px', textAlign: 'center' }}
+                      />
+                    </td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>kg</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>-</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}></td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Tinggi Badan (TB)</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        step="0.1"
+                        name="tinggi_badan"
+                        value={formData.tinggi_badan}
+                        onChange={handleChange}
+                        style={{ width: '80px', padding: '5px', textAlign: 'center' }}
+                      />
+                    </td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>cm</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>-</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}></td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Indeks Massa Tubuh (IMT)</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="imt"
+                        value={formData.imt}
+                        readOnly
+                        style={{ width: '80px', padding: '5px', textAlign: 'center', backgroundColor: '#f3f4f6' }}
+                      />
+                    </td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>kg/m²</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>18,5 - 25,0</td>
+                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                      {formData.imt && (
+                        (parseFloat(formData.imt) < 18.5 || parseFloat(formData.imt) > 25.0) ? 
+                        <span style={{ color: '#ef4444', fontWeight: 'bold' }}>{parseFloat(formData.imt) < 18.5 ? 'Kurus' : 'Gemuk'}</span> : 
+                        <span style={{ color: '#10b981' }}>Normal</span>
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <p style={{ fontSize: '12px', marginTop: '10px', fontStyle: 'italic' }}>
+                Catatan: Interpretasi hasil antropometri sesuai kategori IMT (WHO Asia Pasifik).
+              </p>
+            </div>
+
+            <h2 className={styles.sectionTitle}>PEMERIKSAAN PENUNJANG</h2>
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
-                <label htmlFor="tinggi_badan">TB (cm)</label>
-                <input
-                  type="number"
-                  id="tinggi_badan"
-                  name="tinggi_badan"
-                  value={formData.tinggi_badan}
-                  onChange={handleChange}
-                  step="0.1"
-                  className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="berat_badan">BB (kg)</label>
-                <input
-                  type="number"
-                  id="berat_badan"
-                  name="berat_badan"
-                  value={formData.berat_badan}
-                  onChange={handleChange}
-                  step="0.1"
-                  className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="tensi_darah_sistol">Tensi Darah Sistol (mmHg)</label>
-                <input
-                  type="number"
-                  id="tensi_darah_sistol"
-                  name="tensi_darah_sistol"
-                  value={formData.tensi_darah_sistol}
-                  onChange={handleChange}
-                  className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="tensi_darah_diastol">Tensi Darah Diastol (mmHg)</label>
-                <input
-                  type="number"
-                  id="tensi_darah_diastol"
-                  name="tensi_darah_diastol"
-                  value={formData.tensi_darah_diastol}
-                  onChange={handleChange}
-                  className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="kolesterol">Chol (mg/dL)</label>
+                <label htmlFor="kolesterol">Kolesterol (mg/dL)</label>
                 <input
                   type="number"
                   id="kolesterol"
                   name="kolesterol"
                   value={formData.kolesterol}
                   onChange={handleChange}
-                  step="0.1"
                   className={styles.input}
+                  placeholder="Masukkan hasil kolesterol"
                 />
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="gds">GDS (mg/dL)</label>
+                <label htmlFor="gds">Gula Darah Sewaktu (GDS) (mg/dL)</label>
                 <input
                   type="number"
                   id="gds"
                   name="gds"
                   value={formData.gds}
                   onChange={handleChange}
-                  step="0.1"
                   className={styles.input}
+                  placeholder="Masukkan hasil GDS"
                 />
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="as_urat">As Urat (mg/dL)</label>
+                <label htmlFor="as_urat">Asam Urat (mg/dL)</label>
                 <input
                   type="number"
                   id="as_urat"
                   name="as_urat"
                   value={formData.as_urat}
                   onChange={handleChange}
-                  step="0.1"
                   className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroupFull}>
-                <label htmlFor="keluhan">Keluhan yang Dirasakan Pasien</label>
-                <textarea
-                  id="keluhan"
-                  name="keluhan"
-                  value={formData.keluhan}
-                  onChange={handleChange}
-                  rows={4}
-                  className={styles.textarea}
-                  placeholder="Masukkan keluhan yang dirasakan pasien"
+                  placeholder="Masukkan hasil asam urat"
                 />
               </div>
             </div>
@@ -426,16 +580,7 @@ export default function PerawatPage() {
               type="button"
               onClick={() => {
                 setSelectedPatient(null);
-                setFormData({
-                  tinggi_badan: '',
-                  berat_badan: '',
-                  tensi_darah_sistol: '',
-                  tensi_darah_diastol: '',
-                  kolesterol: '',
-                  gds: '',
-                  as_urat: '',
-                  keluhan: '',
-                });
+                setFormData(initialFormData);
               }}
               className={styles.btnReset}
             >
@@ -446,7 +591,7 @@ export default function PerawatPage() {
       )}
 
       <div className={styles.footer}>
-        <p>Copyright © 2025 PT Doctor PHC Indonesia. All rights reserved.</p>
+        <p>Copyright © {new Date().getFullYear()} PT Doctor PHC Indonesia. All rights reserved.</p>
       </div>
     </div>
   );
